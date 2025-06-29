@@ -1,3 +1,4 @@
-tinywl
+*.so
+*.o
 *-protocol.c
 *-protocol.h
