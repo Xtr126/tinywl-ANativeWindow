@@ -1,0 +1,9 @@
+{
+    "clangd.fallbackFlags": [
+        "-I/data/data/com.termux/files/usr/include/wlroots-0.18",
+        "-I/data/data/com.termux/files/usr/include/libdrm",
+        "-I/data/data/com.termux/files/usr/include/pixman-1",
+        "-DWLR_USE_UNSTABLE",
+        "-I."
+    ]
+}
