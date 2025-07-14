@@ -25,7 +25,9 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "buffer.h"
-#include "tinywl_server.h"
+
+#include <jni.h>
+#include <android/native_window_jni.h>
 
 /* For brevity's sake, struct members are annotated where they are used. */
 enum tinywl_cursor_mode {
@@ -884,9 +886,8 @@ static void server_new_xdg_popup(struct wl_listener *listener, void *data) {
 	wl_signal_add(&xdg_popup->events.destroy, &popup->destroy);
 }
 
-int tinywl_start(ANativeWindow *pWindow) {
+static int tinywl_start() {
 	wlr_log_init(WLR_DEBUG, NULL);
-	window = pWindow;
 	char *startup_cmd = NULL;
 
 	struct tinywl_server server = {0};
@@ -1062,4 +1063,14 @@ int tinywl_start(ANativeWindow *pWindow) {
 	wlr_backend_destroy(server.backend);
 	wl_display_destroy(server.wl_display);
 	return 0;
+}
+
+JNIEXPORT int JNICALL
+Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface) {
+    // Cast nativePtr back to your compositor's context
+    // Get ANativeWindow from jSurface
+   window = ANativeWindow_fromSurface(env, jSurface);
+    // Store this android_native_window pointer for this toplevel
+    // You'll then use ANativeWindow_lock/unlockAndPost with AHardwareBuffer
+   return tinywl_start();
 }

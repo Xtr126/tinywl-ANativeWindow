@@ -25,11 +25,11 @@ buffer.o: buffer.c
 dmabuf.o: dmabuf.c
 	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-libtinywl_server.so: tinywl.o buffer.o dmabuf.o
+libtinywl.so: tinywl.o buffer.o dmabuf.o
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl_server.so tinywl.o buffer.o dmabuf.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer.o dmabuf.o xdg-shell-protocol.h
 
-.DEFAULT_GOAL=libtinywl_server.so
+.DEFAULT_GOAL=libtinywl.so
 .PHONY: clean
