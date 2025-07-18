@@ -1,3 +1,4 @@
+#include <android/native_window.h>
 #include <assert.h>
 #include <getopt.h>
 #include <stdbool.h>
@@ -28,6 +29,7 @@
 
 #include <jni.h>
 #include <android/native_window_jni.h>
+#include <wlr/backend/headless.h>
 
 /* For brevity's sake, struct members are annotated where they are used. */
 enum tinywl_cursor_mode {
@@ -898,11 +900,13 @@ static int tinywl_start() {
 	 * output hardware. The autocreate option will choose the most suitable
 	 * backend based on the current environment, such as opening an X11 window
 	 * if an X11 server is running. */
-	server.backend = wlr_backend_autocreate(wl_display_get_event_loop(server.wl_display), NULL);
+	server.backend = wlr_headless_backend_create(wl_display_get_event_loop(server.wl_display));
 	if (server.backend == NULL) {
 		wlr_log(WLR_ERROR, "failed to create wlr_backend");
 		return 1;
 	}
+
+	wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
 	 * can also specify a renderer using the WLR_RENDERER env var.
@@ -1067,10 +1071,13 @@ static int tinywl_start() {
 
 JNIEXPORT int JNICALL
 Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface) {
-    // Cast nativePtr back to your compositor's context
-    // Get ANativeWindow from jSurface
-   window = ANativeWindow_fromSurface(env, jSurface);
-    // Store this android_native_window pointer for this toplevel
-    // You'll then use ANativeWindow_lock/unlockAndPost with AHardwareBuffer
-   return tinywl_start();
+	wlr_log(WLR_DEBUG, "Setting buffers geometry");
+	int ret = ANativeWindow_setBuffersGeometry(window, 0, 0,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
+	if (ret != 0) {
+		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
+		return 1;
+	}	
+	// Get ANativeWindow from jSurface
+	window = ANativeWindow_fromSurface(env, jSurface);
+	return tinywl_start();
 }

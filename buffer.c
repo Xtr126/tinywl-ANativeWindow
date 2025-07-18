@@ -52,8 +52,6 @@ bool AHardwareBuffer_getDmabufAttributes(AHardwareBuffer *ahb,
 
 void ANativeWindow_render_scene(ANativeWindow *window, struct wlr_output *output, 
         struct wlr_scene_output *scene_output) {
-    // ANativeWindow_setBuffersGeometry(window, output->width, output->height,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
-
     wlr_log(WLR_DEBUG, "Dequeuing buffer");
     ANativeWindowBuffer *anb;
     int fence_fd = -1;
