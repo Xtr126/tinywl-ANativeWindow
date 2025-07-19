@@ -30,6 +30,7 @@
 #include <jni.h>
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
+#include <wlr/render/gles2.h>
 
 /* For brevity's sake, struct members are annotated where they are used. */
 enum tinywl_cursor_mode {
@@ -912,7 +913,7 @@ static int tinywl_start() {
 	 * can also specify a renderer using the WLR_RENDERER env var.
 	 * The renderer is responsible for defining the various pixel formats it
 	 * supports for shared memory, this configures that for clients. */
-	server.renderer = wlr_renderer_autocreate(server.backend);
+	server.renderer = initialize_egl_and_renderer(window);
 	if (server.renderer == NULL) {
 		wlr_log(WLR_ERROR, "failed to create wlr_renderer");
 		return 1;

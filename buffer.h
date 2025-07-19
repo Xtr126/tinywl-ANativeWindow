@@ -15,3 +15,5 @@ bool AHardwareBuffer_getDmabufAttributes(AHardwareBuffer *ahb,
 int sync_wait(int fd, int timeout);
 
 void ANativeWindow_render_scene(ANativeWindow *window, struct wlr_output *output, struct wlr_scene_output * scene_output);
+
+struct wlr_renderer *initialize_egl_and_renderer(ANativeWindow *window);
