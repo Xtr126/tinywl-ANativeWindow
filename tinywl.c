@@ -1072,12 +1072,6 @@ static int tinywl_start() {
 
 JNIEXPORT int JNICALL
 Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface) {
-	wlr_log(WLR_DEBUG, "Setting buffers geometry");
-	int ret = ANativeWindow_setBuffersGeometry(window, 0, 0,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
-	if (ret != 0) {
-		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
-		return 1;
-	}	
 	// Get ANativeWindow from jSurface
 	window = ANativeWindow_fromSurface(env, jSurface);
 	return tinywl_start();
