@@ -51,8 +51,13 @@ bool AHardwareBuffer_getDmabufAttributes(AHardwareBuffer *ahb,
 }
 
 void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *buffer_manager) {
+    struct wlr_dmabuf_attributes dmabuf_attrs = {0};
 
-    struct wlr_dmabuf_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+    if (!wlr_buffer_get_dmabuf(wlr_buffer, &dmabuf_attrs)) {
+		wlr_log(WLR_ERROR, "wlr_buffer_get_dmabuf failed");
+		return;
+    } 
+        
     // Create AHardwareBuffer from DMA-BUF
     AHardwareBuffer_Desc ahb_desc = {
         .width = wlr_buffer->width,
@@ -62,13 +67,12 @@ void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *b
         .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE,
     };
 
-
     native_handle_t *handle = native_handle_create(1, 4);
-    handle->data[0] = fcntl(buffer->dmabuf.fd[0], F_DUPFD_CLOEXEC, 0); // DMA-BUF FD
-    handle->data[1] = buffer->dmabuf.stride[0];               // Buffer stride
+    handle->data[0] = fcntl(dmabuf_attrs.fd[0], F_DUPFD_CLOEXEC, 0); // DMA-BUF FD
+    handle->data[1] = dmabuf_attrs.stride[0];               // Buffer stride
     handle->data[2] = 0;                                     // Offset
-    handle->data[3] = (uint32_t)buffer->dmabuf.modifier;   // Modifier low
-    handle->data[4] = buffer->dmabuf.modifier >> 32;       // Modifier high
+    handle->data[3] = (uint32_t)dmabuf_attrs.modifier;   // Modifier low
+    handle->data[4] = dmabuf_attrs.modifier >> 32;       // Modifier high
 
     AHardwareBuffer *ahb;
     int ret = AHardwareBuffer_createFromHandle(
