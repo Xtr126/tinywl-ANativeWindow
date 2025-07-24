@@ -4,6 +4,7 @@
 #include <wlr/render/dmabuf.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_scene.h>
+#include "buffer_manager.h"
 
 uint32_t android_to_drm_format(uint32_t android_format);
 
@@ -14,4 +15,4 @@ bool AHardwareBuffer_getDmabufAttributes(AHardwareBuffer *ahb,
 /* timeout in msecs */
 int sync_wait(int fd, int timeout);
 
-void ANativeWindow_render_scene(ANativeWindow *window, struct wlr_output *output, struct wlr_scene_output * scene_output);
+void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *buffer_manager);

@@ -1,15 +1,15 @@
+#include <android/hardware_buffer.h>
 #include <string.h>
 #include <unistd.h>
+#include "buffer_manager.h"
 #include "cutils/native_handle.h"
 #include "drm_fourcc.h"
-#include "nativebase/nativebase.h"
-#include "vndk/window.h"
 #include "vndk/hardware_buffer.h"
 #include "buffer.h"
 #include "dmabuf.h"
 #include <wlr/interfaces/wlr_buffer.h>
 #include <wlr/util/log.h>
-
+#include <fcntl.h>
 
 // Convert Android format to DRM format
 uint32_t android_to_drm_format(uint32_t android_format) {
@@ -50,75 +50,35 @@ bool AHardwareBuffer_getDmabufAttributes(AHardwareBuffer *ahb,
     return true;
 }
 
-void ANativeWindow_render_scene(ANativeWindow *window, struct wlr_output *output, 
-        struct wlr_scene_output *scene_output) {
-    wlr_log(WLR_DEBUG, "Dequeuing buffer");
-    ANativeWindowBuffer *anb;
-    int fence_fd = -1;
-    int ret = ANativeWindow_dequeueBuffer(window, &anb, &fence_fd);
+void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *buffer_manager) {
+
+    struct wlr_dmabuf_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+    // Create AHardwareBuffer from DMA-BUF
+    AHardwareBuffer_Desc ahb_desc = {
+        .width = wlr_buffer->width,
+        .height = wlr_buffer->height,
+        .layers = 1,
+        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
+        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE,
+    };
+
+
+    native_handle_t *handle = native_handle_create(1, 4);
+    handle->data[0] = fcntl(buffer->dmabuf.fd[0], F_DUPFD_CLOEXEC, 0); // DMA-BUF FD
+    handle->data[1] = buffer->dmabuf.stride[0];               // Buffer stride
+    handle->data[2] = 0;                                     // Offset
+    handle->data[3] = (uint32_t)buffer->dmabuf.modifier;   // Modifier low
+    handle->data[4] = buffer->dmabuf.modifier >> 32;       // Modifier high
+
+    AHardwareBuffer *ahb;
+    int ret = AHardwareBuffer_createFromHandle(
+        &ahb_desc, handle, AHARDWAREBUFFER_CREATE_FROM_HANDLE_METHOD_REGISTER, &ahb
+    );
+
     if (ret != 0) {
-        wlr_log(WLR_ERROR, "Failed to dequeue buffer: %s (%d)", strerror(-ret), -ret);
-        return;
-    }
-    
-    if (fence_fd >= 0) {
-        wlr_log(WLR_DEBUG, "Waiting for buffer fence");
-        if (sync_wait(fence_fd, -1)) {
-            wlr_log(WLR_ERROR, "Failed to wait for fence");
-            close(fence_fd);
-            return;
-        }
-        close(fence_fd);
-    }
-    
-    wlr_log(WLR_DEBUG, "Getting hardware buffer");
-    AHardwareBuffer *ahb = ANativeWindowBuffer_getHardwareBuffer(anb);
-    if (!ahb) {
-        wlr_log(WLR_ERROR, "Failed to get hardware buffer");
-        return;
-    }
-    
-    wlr_log(WLR_DEBUG, "Creating DMA-BUF attributes");
-    struct wlr_dmabuf_attributes attribs;
-    if (!AHardwareBuffer_getDmabufAttributes(ahb, &attribs)) {
-        wlr_log(WLR_ERROR, "Failed to get DMA-BUF attributes");
-        return;
-    }
-    
-    wlr_log(WLR_DEBUG, "Creating wlroots buffer");
-    struct wlr_dmabuf_buffer *dmabuf_buffer = dmabuf_buffer_create(&attribs);
-    if (!dmabuf_buffer) {
-        wlr_log(WLR_ERROR, "Failed to create dmabuf buffer");
-        close(attribs.fd[0]);
+        wlr_log(WLR_ERROR, "Failed to create AHardwareBuffer from handle: %s (%d)", strerror(ret), ret);
         return;
     }
 
-    struct wlr_buffer *buffer = &dmabuf_buffer->base; 
-    
-    wlr_log(WLR_DEBUG, "Attaching buffer to output");
-    struct wlr_output_state state;
-    wlr_output_state_init(&state);
-    wlr_output_state_set_buffer(&state, buffer);
-    if (!wlr_output_commit_state(output, &state)) {
-        wlr_log(WLR_ERROR, "Failed to commit output state");
-        wlr_output_state_finish(&state);
-        wlr_buffer_drop(buffer);
-        return;
-    }
-    wlr_output_state_finish(&state);
-
-    wlr_log(WLR_DEBUG, "Rendering scene");
-    if (!wlr_scene_output_commit(scene_output, NULL)) {
-        wlr_log(WLR_ERROR, "Failed to commit scene output");
-        wlr_buffer_drop(buffer);
-        return;
-    }
-    
-    wlr_log(WLR_DEBUG, "Releasing wlroots buffer");
-    wlr_buffer_drop(buffer);
-    
-    wlr_log(WLR_DEBUG, "Queueing buffer back to Android");
-    if (ANativeWindow_queueBuffer(window, anb, -1)) {
-        wlr_log(WLR_ERROR, "Failed to queue buffer");
-    }
+    buffer_manager_send_buffer(buffer_manager, ahb, -1);
 }

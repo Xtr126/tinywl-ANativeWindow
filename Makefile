@@ -22,14 +22,17 @@ tinywl.o: tinywl.c xdg-shell-protocol.h
 buffer.o: buffer.c
 	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
+buffer_manager.o: buffer_manager.cpp
+	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
+
 dmabuf.o: dmabuf.c
 	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-libtinywl.so: tinywl.o buffer.o dmabuf.o
+libtinywl.so: tinywl.o buffer.o dmabuf.o buffer_manager.o
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer.o dmabuf.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer.o dmabuf.o buffer_manager.o xdg-shell-protocol.h
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean

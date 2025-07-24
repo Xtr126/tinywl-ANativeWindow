@@ -26,8 +26,8 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "buffer.h"
+#include "buffer_manager.h"
 
-#include <jni.h>
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
 
@@ -82,6 +82,7 @@ struct tinywl_output {
 	struct wl_listener frame;
 	struct wl_listener request_state;
 	struct wl_listener destroy;
+	struct wl_listener commit;
 };
 
 struct tinywl_toplevel {
@@ -116,6 +117,7 @@ struct tinywl_keyboard {
 };
 
 ANativeWindow *window;
+BufferManager *buffer_manager;
 
 
 static void focus_toplevel(struct tinywl_toplevel *toplevel, struct wlr_surface *surface) {
@@ -574,10 +576,9 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
 	struct wlr_scene_output *scene_output = wlr_scene_get_scene_output(
 		scene, output->wlr_output);
-	
+
 	/* Render the scene if needed and commit the output */
 	wlr_scene_output_commit(scene_output, NULL);
-	ANativeWindow_render_scene(window, output->wlr_output, scene_output);
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -599,8 +600,15 @@ static void output_destroy(struct wl_listener *listener, void *data) {
 	wl_list_remove(&output->frame.link);
 	wl_list_remove(&output->request_state.link);
 	wl_list_remove(&output->destroy.link);
+	wl_list_remove(&output->commit.link);
 	wl_list_remove(&output->link);
 	free(output);
+}
+
+static void output_commit(struct wl_listener *listener, void *data) {
+	struct tinywl_output *output = wl_container_of(listener, output, commit);
+	const struct wlr_output_event_commit *event = data;
+	ANativeWindow_sendWlrBuffer(event->state->buffer, buffer_manager);
 }
 
 static void server_new_output(struct wl_listener *listener, void *data) {
@@ -649,6 +657,10 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 	/* Sets up a listener for the destroy event. */
 	output->destroy.notify = output_destroy;
 	wl_signal_add(&wlr_output->events.destroy, &output->destroy);
+	
+	/* Sets up a listener for the commit event. */
+	output->commit.notify = output_commit;
+	wl_signal_add(&wlr_output->events.commit, &output->commit);
 
 	wl_list_insert(&server->outputs, &output->link);
 
@@ -913,6 +925,8 @@ static int tinywl_start() {
 		return 1;
 	}	
 
+	buffer_manager = buffer_manager_create(window);
+
 	wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
@@ -1073,9 +1087,10 @@ static int tinywl_start() {
 	wlr_renderer_destroy(server.renderer);
 	wlr_backend_destroy(server.backend);
 	wl_display_destroy(server.wl_display);
+
+	buffer_manager_destroy(buffer_manager);
 	return 0;
 }
-
 JNIEXPORT int JNICALL
 Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface) {
 		// Get ANativeWindow from jSurface
