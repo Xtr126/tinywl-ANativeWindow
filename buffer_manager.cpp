@@ -1,5 +1,6 @@
 #include "buffer_manager.h"
 
+#include <android/api-level.h>
 #include <android/surface_control.h>
 #include <android/log.h>
 #include <cstdlib>
@@ -14,14 +15,48 @@ extern "C" {
 
 /**
  * @brief The internal state of the BufferManager.
- * This struct now holds the ASurfaceControl, which is the target for transactions.
  */
 struct BufferManager {
     // We keep the window reference for completeness and potential debugging.
     ANativeWindow* window;
 };
 
-// C-style function implementations callable from external code.
+// --- Start of API-specific implementation details ---
+
+// This struct is used on older APIs to pass the user's callback
+// and context through the ASurfaceTransaction_setOnComplete mechanism.
+struct OnCompleteContext {
+    BufferManager_OnReleaseCallback user_callback;
+    void* user_context;
+};
+
+/**
+ * @brief Adapter callback for APIs < 36.
+ *
+ * This function is registered with ASurfaceTransaction_setOnComplete. It extracts
+ * the release fence for the *previous* buffer from the transaction stats
+ * and forwards it to the user's final callback.
+ */
+static void on_transaction_complete_legacy_adapter(void* context, ASurfaceTransactionStats* stats) {
+    if (!context || !stats) {
+        if (context) delete static_cast<OnCompleteContext*>(context);
+        ALOGE("Legacy adapter callback received null context or stats.");
+        return;
+    }
+
+    OnCompleteContext* wrapped_context = static_cast<OnCompleteContext*>(context);
+
+
+    if (wrapped_context->user_callback) {
+        wrapped_context->user_callback(wrapped_context->user_context, -1 /* Already released */);
+    } 
+
+    // Clean up the context wrapper we allocated.
+    delete wrapped_context;
+}
+
+// --- End of API-specific implementation details ---
+
 
 BufferManager* buffer_manager_create(ANativeWindow* window) {
     if (!window) {
@@ -29,25 +64,19 @@ BufferManager* buffer_manager_create(ANativeWindow* window) {
         return nullptr;
     }
 
-    // Create the SurfaceControl from the window. This is the object
-    // that transactions will operate on.
     ASurfaceControl* surface_control = ASurfaceControl_createFromWindow(window, "BufferManagerSurfaceControl");
     if (!surface_control) {
         ALOGE("Failed to create ASurfaceControl from window.");
         return nullptr;
     }
 
-    // Allocate memory for our state struct.
     BufferManager* manager = new (std::nothrow) BufferManager();
     if (!manager) {
         ALOGE("Failed to allocate memory for BufferManager.");
-        // Clean up the surface control if allocation fails.
         ASurfaceControl_release(surface_control);
         return nullptr;
     }
 
-    // Retain a reference to the window. Although the ASurfaceControl also holds
-    // a reference, it's good practice for the manager to hold its own.
     ANativeWindow_acquire(window);
     manager->window = window;
 
@@ -62,17 +91,19 @@ void buffer_manager_destroy(BufferManager* manager) {
 
     if (manager->window) {
         ALOGI("Releasing window %p", manager->window);
-        // Release the reference we took in the create function.
         ANativeWindow_release(manager->window);
         manager->window = nullptr;
     }
     
-    // Free the memory for the manager struct itself.
     delete manager;
     ALOGI("BufferManager destroyed.");
 }
 
-int buffer_manager_send_buffer(BufferManager* manager, AHardwareBuffer* buffer, int acquire_fence_fd) {
+int buffer_manager_send_buffer(BufferManager* manager,
+                               AHardwareBuffer* buffer,
+                               int acquire_fence_fd,
+                               BufferManager_OnReleaseCallback on_release_callback,
+                               void* context) {
     ASurfaceControl* surface_control = ASurfaceControl_createFromWindow(manager->window, "BufferManagerSurfaceControl");
     if (!surface_control) {
         ALOGE("Failed to create ASurfaceControl from window.");
@@ -85,31 +116,45 @@ int buffer_manager_send_buffer(BufferManager* manager, AHardwareBuffer* buffer, 
 
     if (!buffer) {
         ALOGE("Input AHardwareBuffer is null.");
-        if (acquire_fence_fd >= 0) {
-            close(acquire_fence_fd);
-        }
+        if (acquire_fence_fd >= 0) close(acquire_fence_fd);
         return -2;
     }
 
-    // 1. Create a new surface transaction.
     ASurfaceTransaction* transaction = ASurfaceTransaction_create();
     if (!transaction) {
         ALOGE("Failed to create ASurfaceTransaction.");
-        if (acquire_fence_fd >= 0) {
-            close(acquire_fence_fd);
-        }
+        if (acquire_fence_fd >= 0) close(acquire_fence_fd);
         return -3;
     }
 
-    // 2. Set the buffer for the target surface control in the transaction.
-    // The transaction takes ownership of the acquire_fence_fd and will close it.
+#if __ANDROID_API__ >= 36
+    if (on_release_callback) {
+        ASurfaceTransaction_setBufferWithRelease(
+            transaction, surface_control, buffer, acquire_fence_fd,
+            context, on_release_callback);
+    } else {
+        // If no callback is needed, use the simpler function.
+        ASurfaceTransaction_setBuffer(transaction, surface_control, buffer, acquire_fence_fd);
+    }
+#else
+    // For older APIs, we use the setOnComplete callback as an adapter.
     ASurfaceTransaction_setBuffer(transaction, surface_control, buffer, acquire_fence_fd);
+    if (on_release_callback) {
+        // We must allocate a temporary context to pass our own adapter callback.
+        OnCompleteContext* callback_context = new (std::nothrow) OnCompleteContext{
+            .user_callback = on_release_callback, 
+            .user_context = context,
+        };
+        if (callback_context) {
+            ASurfaceTransaction_setOnComplete(transaction, callback_context, on_transaction_complete_legacy_adapter);
+        } else {
+            ALOGE("Failed to allocate memory for OnCompleteContext wrapper.");
+            // We can't set the callback, but we can still try to apply the transaction.
+        }
+    }
+#endif
 
-    // 3. Apply the transaction to make the changes visible.
-    // This function is void and does not return an error code.
     ASurfaceTransaction_apply(transaction);
-
-    // 4. Delete the transaction object to release its resources.
     ASurfaceTransaction_delete(transaction);
 
     ALOGI("Releasing SurfaceControl %p", surface_control);
