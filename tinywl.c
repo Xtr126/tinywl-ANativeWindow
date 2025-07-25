@@ -637,6 +637,14 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 		wlr_output_state_set_mode(&state, mode);
 	}
 
+	wlr_log(WLR_DEBUG, "Setting buffers geometry for ANativeWindow to %dx%d", wlr_output->width, wlr_output->height);
+	int ret = ANativeWindow_setBuffersGeometry(window, wlr_output->width, wlr_output->height,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
+	if (ret != 0) {
+		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
+	}	
+
+	wlr_output_state_set_render_format(&state, android_to_drm_format(AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM));
+
 	/* Atomically applies the new output state. */
 	wlr_output_commit_state(wlr_output, &state);
 	wlr_output_state_finish(&state);
@@ -917,13 +925,6 @@ static int tinywl_start() {
 		wlr_log(WLR_ERROR, "failed to create wlr_backend");
 		return 1;
 	}
-
-	wlr_log(WLR_DEBUG, "Setting buffers geometry");
-	int ret = ANativeWindow_setBuffersGeometry(window, 0, 0,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
-	if (ret != 0) {
-		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
-		return 1;
-	}	
 
 	buffer_manager = buffer_manager_create(window);
 
