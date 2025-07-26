@@ -84,5 +84,5 @@ void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *b
         return;
     }
 
-    buffer_manager_send_buffer(buffer_manager, ahb, -1);
+    buffer_manager_send_buffer(buffer_manager, ahb, -1, NULL, NULL);
 }
