@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -27,6 +28,8 @@
 
 #include "buffer.h"
 #include "buffer_manager.h"
+#include "ahb_swapchain.h"
+#include "wlr/render/swapchain.h"
 
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
@@ -118,6 +121,7 @@ struct tinywl_keyboard {
 
 ANativeWindow *window;
 BufferManager *buffer_manager;
+struct wlr_swapchain *ahb_swapchain;
 
 
 static void focus_toplevel(struct tinywl_toplevel *toplevel, struct wlr_surface *surface) {
@@ -576,9 +580,26 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
 	struct wlr_scene_output *scene_output = wlr_scene_get_scene_output(
 		scene, output->wlr_output);
+	
+	
+	if (!ahb_swapchain) {
+		struct wlr_buffer *buffer = wlr_allocator_create_buffer(output->server->allocator, output->wlr_output->width, output->wlr_output->height, &output->wlr_output->swapchain->format);
+		struct wlr_dmabuf_attributes attribs = {0};
+		wlr_buffer_get_dmabuf(buffer, &attribs);
+		// wlr_buffer_drop(buffer);
+		ahb_swapchain = wlr_swapchain_create_with_ahb(output->wlr_output->width, output->wlr_output->height, output->wlr_output->swapchain->format, &attribs);
+		wlr_buffer_drop(buffer);
+	}
 
+	struct wlr_scene_output_state_options options = {0};
+
+	options.swapchain = ahb_swapchain;
 	/* Render the scene if needed and commit the output */
-	wlr_scene_output_commit(scene_output, NULL);
+	// wlr_scene_output_commit(scene_output, NULL);
+	wlr_scene_output_commit(scene_output, &options);
+	struct wlr_ahb_buffer *ahb_buffer = ahb_buffer_from_buffer(ahb_swapchain->slots[0].buffer);
+	
+	buffer_manager_send_buffer(buffer_manager, ahb_buffer->ahb, -1, NULL, NULL);
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -608,7 +629,6 @@ static void output_destroy(struct wl_listener *listener, void *data) {
 static void output_commit(struct wl_listener *listener, void *data) {
 	struct tinywl_output *output = wl_container_of(listener, output, commit);
 	const struct wlr_output_event_commit *event = data;
-	ANativeWindow_sendWlrBuffer(event->state->buffer, buffer_manager);
 }
 
 static void server_new_output(struct wl_listener *listener, void *data) {
@@ -641,7 +661,7 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 	int ret = ANativeWindow_setBuffersGeometry(window, wlr_output->width, wlr_output->height,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
 	if (ret != 0) {
 		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
-	}	
+	}
 
 	wlr_output_state_set_render_format(&state, android_to_drm_format(AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM));
 

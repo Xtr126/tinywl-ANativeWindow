@@ -9,6 +9,6 @@ struct wlr_ahb_buffer {
 	bool saved;
 };
 
-struct wlr_swapchain *wlr_swapchain_create_with_ahb(int width, int height);
+struct wlr_swapchain *wlr_swapchain_create_with_ahb(int width, int height, const struct wlr_drm_format format, struct wlr_dmabuf_attributes *dmabuf);
 
 struct wlr_ahb_buffer *ahb_buffer_from_buffer(struct wlr_buffer *wlr_buffer);

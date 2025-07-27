@@ -1,6 +1,6 @@
 #include "cutils/native_handle.h"
-#include "drm_fourcc.h"
 #include "vndk/hardware_buffer.h"
+#include <android/hardware_buffer.h>
 #include <assert.h>
 #include <linux/fcntl.h>
 #include <malloc.h>
@@ -41,7 +41,7 @@ static const struct wlr_buffer_impl ahb_buffer_impl = {
 };
 
 
-static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height) {
+static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height, struct wlr_dmabuf_attributes *dmabuf) {
 	
 	struct wlr_ahb_buffer *buffer = calloc(1, sizeof(*buffer));
 	if (buffer == NULL) {
@@ -53,9 +53,7 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height) {
         .height = height,
         .layers = 1, // Single layer
         .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM, 
-        .usage = 
-                 AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | // Required for ASurfaceTransaction_setBuffer
-                 AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY // For SurfaceFlinger
+        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER 
     };
 
 	AHardwareBuffer_allocate(&desc, &buffer->ahb);
@@ -65,33 +63,14 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height) {
 	
 	const native_handle_t *handle = AHardwareBuffer_getNativeHandle(buffer->ahb);
 
-    int fd = -1;
-    for (int i = 0; i < handle->numFds; i++) {
-        size_t size = lseek(handle->data[i], 0, SEEK_END);
-        if (size < (desc.stride * desc.height * 4))
-            continue;
+    wlr_dmabuf_attributes_copy(&buffer->dmabuf, dmabuf);
 
-        fd = fcntl(handle->data[i], F_DUPFD_CLOEXEC, 0);
-        break;
-    }
-
-
-    buffer->dmabuf = (struct wlr_dmabuf_attributes) {
-        .width = width,
-        .height = height,
-        .n_planes = 1,
-        .format = DRM_FORMAT_ARGB8888,
-        .modifier = DRM_FORMAT_MOD_LINEAR,
-        .offset[0] = 0,
-        .stride[0] = desc.stride * 4,
-        .fd[0] = fd,
-
-    };
+	buffer->dmabuf.fd[0] = handle->data[0];
 	
 	return buffer;
 }
 
-struct wlr_swapchain *wlr_swapchain_create_with_ahb(int width, int height) {
+struct wlr_swapchain *wlr_swapchain_create_with_ahb(int width, int height, const struct wlr_drm_format format, struct wlr_dmabuf_attributes *dmabuf) {
 	struct wlr_swapchain *swapchain = calloc(1, sizeof(*swapchain));
 	if (swapchain == NULL) {
 		return NULL;
@@ -99,10 +78,12 @@ struct wlr_swapchain *wlr_swapchain_create_with_ahb(int width, int height) {
 	swapchain->allocator = NULL;
 	swapchain->width = width;
 	swapchain->height = height;
+    swapchain->format = format;
+
 
 	struct wlr_swapchain_slot *slot = &swapchain->slots[0];
 	slot->acquired = false;
 	slot->age = 0;
-	slot->buffer = &create_wlr_ahb_buffer(width, height)->base;
+	slot->buffer = &create_wlr_ahb_buffer(width, height, dmabuf)->base;
 	return swapchain;
 }
