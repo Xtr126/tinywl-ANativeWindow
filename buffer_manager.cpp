@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <new>
-#include <stdint.h>
 #include <unistd.h> // For close()
 
 extern "C" {
@@ -104,30 +103,33 @@ void buffer_manager_send_buffer(BufferManager* manager,
                                int acquire_fence_fd,
                                BufferManager_OnReleaseCallback on_release_callback,
                                void* context) {
-
-    fail: {
-        // We are now responsible for the fence fd.
+    if (manager->surface_control == nullptr) {
+        ALOGE("ASurfaceControl is null");
+        buffer_manager_destroy(manager);
+         // We are now responsible for the fence fd.
         if (acquire_fence_fd >= 0) {
             close(acquire_fence_fd);
         }
         return;
     }
 
-    if (manager->surface_control == nullptr) {
-        ALOGE("ASurfaceControl is null");
-        buffer_manager_destroy(manager);
-        goto fail;
-    }
-
     if (!buffer) {
         ALOGE("Input AHardwareBuffer is null.");
-        goto fail;
+         // We are now responsible for the fence fd.
+        if (acquire_fence_fd >= 0) {
+            close(acquire_fence_fd);
+        }
+        return;
     }
 
     ASurfaceTransaction* transaction = ASurfaceTransaction_create();
     if (!transaction) {
         ALOGE("Failed to create ASurfaceTransaction.");
-        goto fail;
+         // We are now responsible for the fence fd.
+        if (acquire_fence_fd >= 0) {
+            close(acquire_fence_fd);
+        }
+        return;
     }
 
 #if __ANDROID_API__ >= 36
