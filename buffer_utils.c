@@ -5,7 +5,7 @@
 #include "cutils/native_handle.h"
 #include "drm_fourcc.h"
 #include "vndk/hardware_buffer.h"
-#include "buffer.h"
+#include "buffer_utils.h"
 #include "dmabuf.h"
 #include <wlr/interfaces/wlr_buffer.h>
 #include <wlr/util/log.h>

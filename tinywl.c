@@ -26,7 +26,7 @@
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "buffer.h"
+#include "buffer_utils.h"
 #include "buffer_manager.h"
 #include "ahb_swapchain.h"
 #include "wlr/render/swapchain.h"
