@@ -948,6 +948,10 @@ static int tinywl_start() {
 
 	buffer_manager = buffer_manager_create(window);
 
+	if (buffer_manager == NULL) {
+		return 1;
+	}
+
 	wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
