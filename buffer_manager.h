@@ -85,7 +85,7 @@ void buffer_manager_destroy(BufferManager* _Nonnull manager);
  * @param context A user-defined pointer that will be passed to the on_release_callback.
  * @return 0 on success, or a negative value on error.
  */
-int buffer_manager_send_buffer(BufferManager* _Nonnull manager,
+void buffer_manager_send_buffer(BufferManager* _Nonnull manager,
                                AHardwareBuffer* _Nonnull buffer,
                                int acquire_fence_fd,
                                BufferManager_OnReleaseCallback _Null_unspecified on_release_callback,
