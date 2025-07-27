@@ -589,6 +589,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		// wlr_buffer_drop(buffer);
 		ahb_swapchain = wlr_swapchain_create_with_ahb(output->wlr_output->width, output->wlr_output->height, output->wlr_output->swapchain->format, &attribs);
 		wlr_buffer_drop(buffer);
+		wlr_log(WLR_DEBUG, "AHB swapchain created");
 	}
 
 	struct wlr_scene_output_state_options options = {0};
