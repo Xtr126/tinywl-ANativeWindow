@@ -9,6 +9,7 @@
 #include <wlr/render/swapchain.h>
 #include <wlr/render/allocator.h>
 #include "ahb_swapchain.h"
+#include "wlr/util/log.h"
 
 static const struct wlr_buffer_impl ahb_buffer_impl;
 
@@ -64,10 +65,16 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height, struc
 		width, height);
 	
 	const native_handle_t *handle = AHardwareBuffer_getNativeHandle(buffer->ahb);
+	dmabuf->fd[0] = (handle && handle->numFds) ? handle->data[0] : -1;
+
+	if (dmabuf->fd[0] < 0) {
+		wlr_log(WLR_ERROR, "Failed to get dmabuf from AHardwareBuffer");
+		ahb_destroy(&buffer->base);
+		return NULL;
+	}
 
     wlr_dmabuf_attributes_copy(&buffer->dmabuf, dmabuf);
 
-	buffer->dmabuf.fd[0] = handle->data[0];
 	
 	return buffer;
 }
