@@ -14,11 +14,15 @@
 // Convert Android format to DRM format
 uint32_t android_to_drm_format(uint32_t android_format) {
     switch(android_format) {
-    case AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM: 
-        return DRM_FORMAT_ABGR8888;
-    // Add other formats as needed
-    default:
-        return DRM_FORMAT_INVALID;
+        case AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM: 
+            return DRM_FORMAT_ABGR8888;
+
+        case AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM: 
+            return DRM_FORMAT_XBGR8888;
+
+        // Add other formats as needed
+        default:
+            return DRM_FORMAT_INVALID;
     }
 }
 

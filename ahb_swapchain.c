@@ -52,7 +52,7 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height, struc
         .width = width,
         .height = height,
         .layers = 1, // Single layer
-        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM, 
+        .format = AHB_FORMAT_PREFERRED, 
         .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | 
 				AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY | 
 				AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER

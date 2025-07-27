@@ -664,7 +664,7 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
 	}
 
-	wlr_output_state_set_render_format(&state, android_to_drm_format(AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM));
+	wlr_output_state_set_render_format(&state, android_to_drm_format(AHB_FORMAT_PREFERRED));
 
 	/* Atomically applies the new output state. */
 	wlr_output_commit_state(wlr_output, &state);
