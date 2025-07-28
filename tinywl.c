@@ -1,4 +1,5 @@
 #include <android/native_window.h>
+#include <asm-generic/errno.h>
 #include <assert.h>
 #include <getopt.h>
 #include <stdbool.h>
@@ -581,19 +582,11 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct wlr_scene_output *scene_output = wlr_scene_get_scene_output(
 		scene, output->wlr_output);
 	
-	
 	if (!ahb_swapchain) {
-		struct wlr_buffer *buffer = wlr_allocator_create_buffer(output->server->allocator, output->wlr_output->width, output->wlr_output->height, &output->wlr_output->swapchain->format);
-		struct wlr_dmabuf_attributes attribs = {0};
-		wlr_buffer_get_dmabuf(buffer, &attribs);
-		// wlr_buffer_drop(buffer);
-		ahb_swapchain = wlr_swapchain_create_with_ahb(&attribs);
-		wlr_buffer_drop(buffer);
-		wlr_log(WLR_DEBUG, "AHB swapchain created");
+		ahb_swapchain = wlr_ahb_swapchain_create_for_output(output->wlr_output);
 	}
 
 	struct wlr_scene_output_state_options options = {0};
-
 	options.swapchain = ahb_swapchain;
 	/* Render the scene if needed and commit the output */
 	// wlr_scene_output_commit(scene_output, NULL);
