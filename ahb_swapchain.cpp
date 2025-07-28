@@ -75,6 +75,37 @@ void log_cros_gralloc_handle(const struct cros_gralloc_handle *handle) {
 	wlr_log(WLR_DEBUG, "=== End of cros_gralloc_handle ===");
 }
 
+bool cros_gralloc_to_wlr_dmabuf(const struct cros_gralloc_handle *handle,
+                                 struct wlr_dmabuf_attributes *attribs) {
+	const int MAX_PLANES = DRV_MAX_PLANES;
+
+	if (handle == NULL || attribs == NULL) {
+		return false;
+	}
+
+	// Sanity check: avoid using bad num_planes
+	int num_planes = handle->num_planes;
+	if (num_planes <= 0 || num_planes > MAX_PLANES) {
+		wlr_log(WLR_ERROR, "Invalid num_planes: %d, clamping to %d", num_planes, MAX_PLANES);
+		num_planes = MAX_PLANES;
+	}
+
+	attribs->width = handle->width;
+	attribs->height = handle->height;
+	attribs->format = handle->format;
+	attribs->modifier = handle->format_modifier;
+	attribs->n_planes = 1;
+
+	for (int i = 0; i < num_planes; i++) {
+		attribs->fd[i] = handle->fds[i];
+		attribs->stride[i] = handle->strides[i];
+		attribs->offset[i] = handle->offsets[i];
+	}
+
+	return true;
+}
+
+
 static struct wlr_ahb_buffer *create_wlr_ahb_buffer(struct wlr_dmabuf_attributes *dmabuf) {
 	
 	struct wlr_ahb_buffer *buffer = (wlr_ahb_buffer *)calloc(1, sizeof(*buffer));
@@ -115,6 +146,7 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(struct wlr_dmabuf_attributes
 		wlr_log(WLR_ERROR, "Not cros gralloc");
 	} else {
 		log_cros_gralloc_handle(crosHandle);
+		cros_gralloc_to_wlr_dmabuf(crosHandle, dmabuf);
 	}
 
 
@@ -125,6 +157,15 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(struct wlr_dmabuf_attributes
 		ahb_destroy(&buffer->base);
 		return NULL;
 	}
+
+	wlr_log(WLR_DEBUG, "wlr_dmabuf_attributes:");
+	wlr_log(WLR_DEBUG, "  %dx%d, format: 0x%x, modifier: 0x%lx",
+			dmabuf->width, dmabuf->height, dmabuf->format, dmabuf->modifier);
+	for (int i = 0; i < dmabuf->n_planes; ++i) {
+		wlr_log(WLR_DEBUG, "  Plane %d: fd=%d, stride=%u, offset=%u",
+				i, dmabuf->fd[i], dmabuf->stride[i], dmabuf->offset[i]);
+	}
+
 
     wlr_dmabuf_attributes_copy(&buffer->dmabuf, dmabuf);
 
@@ -186,3 +227,4 @@ struct wlr_swapchain *wlr_ahb_swapchain_create_with_dmabuf_attribs(struct wlr_dm
 	wlr_log(WLR_DEBUG, "AHB swapchain created");
 	return swapchain;
 }
+
