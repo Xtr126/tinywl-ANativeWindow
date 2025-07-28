@@ -42,7 +42,7 @@ static const struct wlr_buffer_impl ahb_buffer_impl = {
 };
 
 
-static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height, struct wlr_dmabuf_attributes *dmabuf) {
+static struct wlr_ahb_buffer *create_wlr_ahb_buffer(struct wlr_dmabuf_attributes *dmabuf) {
 	
 	struct wlr_ahb_buffer *buffer = calloc(1, sizeof(*buffer));
 	if (buffer == NULL) {
@@ -50,9 +50,9 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height, struc
 	}
 
 	AHardwareBuffer_Desc desc = {
-        .width = width,
-        .height = height,
-        .layers = 1, // Single layer
+        .width = dmabuf->width,
+        .height = dmabuf->height,
+        .layers = dmabuf->n_planes, // Single layer
         .format = AHB_FORMAT_PREFERRED, 
         .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | 
 				AHARDWAREBUFFER_USAGE_COMPOSER_OVERLAY | 
@@ -62,15 +62,20 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height, struc
 	AHardwareBuffer_allocate(&desc, &buffer->ahb);
 
 	wlr_buffer_init(&buffer->base, &ahb_buffer_impl,
-		width, height);
+		dmabuf->width, dmabuf->height);
 	
 	const native_handle_t *handle = AHardwareBuffer_getNativeHandle(buffer->ahb);
-	dmabuf->fd[0] = (handle && handle->numFds) ? handle->data[0] : -1;
+	
+	for (int i = 0; i < WLR_DMABUF_MAX_PLANES; i++) {
+    	dmabuf->fd[i] = (handle && i < handle->numFds) ? handle->data[i] : -1;
+	}
 
-	if (dmabuf->fd[0] < 0) {
-		wlr_log(WLR_ERROR, "Failed to get dmabuf from AHardwareBuffer");
-		ahb_destroy(&buffer->base);
-		return NULL;
+	for (int i = 0; i < handle->numFds; i++) {
+		if (dmabuf->fd[i] < 0) {
+			wlr_log(WLR_ERROR, "Failed to get dmabuf from AHardwareBuffer");
+			ahb_destroy(&buffer->base);
+			return NULL;
+		}
 	}
 
     wlr_dmabuf_attributes_copy(&buffer->dmabuf, dmabuf);
@@ -79,20 +84,20 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(int width, int height, struc
 	return buffer;
 }
 
-struct wlr_swapchain *wlr_swapchain_create_with_ahb(int width, int height, const struct wlr_drm_format format, struct wlr_dmabuf_attributes *dmabuf) {
+struct wlr_swapchain *wlr_swapchain_create_with_ahb(struct wlr_dmabuf_attributes *dmabuf) {
 	struct wlr_swapchain *swapchain = calloc(1, sizeof(*swapchain));
 	if (swapchain == NULL) {
 		return NULL;
 	}
 	swapchain->allocator = NULL;
-	swapchain->width = width;
-	swapchain->height = height;
-    swapchain->format = format;
+	swapchain->width = dmabuf->width;
+	swapchain->height = dmabuf->height;
+    // swapchain->format = format;
 
 
 	struct wlr_swapchain_slot *slot = &swapchain->slots[0];
 	slot->acquired = false;
 	slot->age = 0;
-	slot->buffer = &create_wlr_ahb_buffer(width, height, dmabuf)->base;
+	slot->buffer = &create_wlr_ahb_buffer(dmabuf)->base;
 	return swapchain;
 }

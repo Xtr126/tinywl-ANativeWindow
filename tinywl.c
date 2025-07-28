@@ -587,7 +587,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 		struct wlr_dmabuf_attributes attribs = {0};
 		wlr_buffer_get_dmabuf(buffer, &attribs);
 		// wlr_buffer_drop(buffer);
-		ahb_swapchain = wlr_swapchain_create_with_ahb(output->wlr_output->width, output->wlr_output->height, output->wlr_output->swapchain->format, &attribs);
+		ahb_swapchain = wlr_swapchain_create_with_ahb(&attribs);
 		wlr_buffer_drop(buffer);
 		wlr_log(WLR_DEBUG, "AHB swapchain created");
 	}
