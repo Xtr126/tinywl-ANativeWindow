@@ -7,21 +7,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <wlr/render/swapchain.h>
-#include <wlr/render/allocator.h>
 #include "ahb_swapchain.h"
-#include <wlr/util/log.h>
 #include "gralloc_handle.h"
+#include "cros_gralloc_handle.h"
 
-static const struct wlr_buffer_impl ahb_buffer_impl;
-
-
-struct wlr_ahb_buffer *ahb_buffer_from_buffer(struct wlr_buffer *wlr_buffer) {
-	assert(wlr_buffer->impl == &ahb_buffer_impl);
-	struct wlr_ahb_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
-	return buffer;
+extern "C" {
+	#include <wlr/util/log.h>
+	#include <wlr/render/swapchain.h>
+	#include <wlr/render/allocator.h>
 }
-
 
 static void ahb_destroy(struct wlr_buffer *wlr_buffer) {
     struct wlr_ahb_buffer *buffer = ahb_buffer_from_buffer(wlr_buffer);
@@ -44,16 +38,53 @@ static const struct wlr_buffer_impl ahb_buffer_impl = {
 };
 
 
+struct wlr_ahb_buffer *ahb_buffer_from_buffer(struct wlr_buffer *wlr_buffer) {
+	assert(wlr_buffer->impl == &ahb_buffer_impl);
+	struct wlr_ahb_buffer *buffer = wl_container_of(wlr_buffer, buffer, base);
+	return buffer;
+}
+
+void log_cros_gralloc_handle(const struct cros_gralloc_handle *handle) {
+	wlr_log(WLR_DEBUG, "=== cros_gralloc_handle ===");
+	wlr_log(WLR_DEBUG, "id: %u", handle->id);
+	wlr_log(WLR_DEBUG, "width: %u, height: %u", handle->width, handle->height);
+	wlr_log(WLR_DEBUG, "format: 0x%x (DRM), droid_format: %d", handle->format, handle->droid_format);
+	wlr_log(WLR_DEBUG, "tiling: %u", handle->tiling);
+	wlr_log(WLR_DEBUG, "format_modifier: 0x%lx", handle->format_modifier);
+	wlr_log(WLR_DEBUG, "use_flags: 0x%lx", handle->use_flags);
+	wlr_log(WLR_DEBUG, "magic: 0x%x", handle->magic);
+	wlr_log(WLR_DEBUG, "pixel_stride: %u", handle->pixel_stride);
+	wlr_log(WLR_DEBUG, "usage: 0x%lx", handle->usage);
+	wlr_log(WLR_DEBUG, "num_planes: %u", handle->num_planes);
+	wlr_log(WLR_DEBUG, "reserved_region_size: %lu", handle->reserved_region_size);
+	wlr_log(WLR_DEBUG, "total_size: %lu", handle->total_size);
+
+	for (uint32_t i = 0; i < DRV_MAX_PLANES; ++i) {
+		wlr_log(WLR_DEBUG, "Plane %u:", i);
+		wlr_log(WLR_DEBUG, "  fd: %d", handle->fds[i]);
+		wlr_log(WLR_DEBUG, "  stride: %u", handle->strides[i]);
+		wlr_log(WLR_DEBUG, "  offset: %u", handle->offsets[i]);
+		wlr_log(WLR_DEBUG, "  size: %u", handle->sizes[i]);
+	}
+
+	if (handle->reserved_region_size > 0) {
+		int meta_fd_index = handle->num_planes;
+		wlr_log(WLR_DEBUG, "Metadata reserved region FD: %d", handle->fds[meta_fd_index]);
+	}
+
+	wlr_log(WLR_DEBUG, "=== End of cros_gralloc_handle ===");
+}
+
 static struct wlr_ahb_buffer *create_wlr_ahb_buffer(struct wlr_dmabuf_attributes *dmabuf) {
 	
-	struct wlr_ahb_buffer *buffer = calloc(1, sizeof(*buffer));
+	struct wlr_ahb_buffer *buffer = (wlr_ahb_buffer *)calloc(1, sizeof(*buffer));
 	if (buffer == NULL) {
 		return NULL;
 	}
 
 	AHardwareBuffer_Desc desc = {
-        .width = dmabuf->width,
-        .height = dmabuf->height,
+        .width = static_cast<uint32_t>(dmabuf->width),
+        .height = static_cast<uint32_t>(dmabuf->height),
         .layers = 1, // Single layer
         .format = AHB_FORMAT_PREFERRED, 
         .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | 
@@ -79,6 +110,14 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(struct wlr_dmabuf_attributes
 		return NULL;
 	}
 
+    cros_gralloc_handle* crosHandle = (cros_gralloc_handle*)handle;
+	if (!crosHandle) {
+		wlr_log(WLR_ERROR, "Not cros gralloc");
+	} else {
+		log_cros_gralloc_handle(crosHandle);
+	}
+
+
 	dmabuf->fd[0] = gralloc_handle(handle)->prime_fd;
 
 	if (dmabuf->fd[0] < 0) {
@@ -95,7 +134,7 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(struct wlr_dmabuf_attributes
 bool wlr_drm_format_copy(struct wlr_drm_format *dst, const struct wlr_drm_format *src) {
 	assert(src->len <= src->capacity);
 
-	uint64_t *modifiers = malloc(sizeof(*modifiers) * src->len);
+	uint64_t *modifiers = (uint64_t *)malloc(sizeof(*modifiers) * src->len);
 	if (!modifiers) {
 		return false;
 	}
@@ -110,7 +149,7 @@ bool wlr_drm_format_copy(struct wlr_drm_format *dst, const struct wlr_drm_format
 	return true;
 }
 
-struct wlr_swapchain *wlr_ahb_swapchain_create_for_output(struct wlr_output *output) {
+extern struct wlr_swapchain *wlr_ahb_swapchain_create_for_output(struct wlr_output *output) {
 	struct wlr_buffer *buffer = wlr_allocator_create_buffer(output->allocator, output->width, output->height, &output->swapchain->format);
 	struct wlr_dmabuf_attributes attribs = {0};
 	wlr_buffer_get_dmabuf(buffer, &attribs);
@@ -124,7 +163,7 @@ struct wlr_swapchain *wlr_ahb_swapchain_create_for_output(struct wlr_output *out
 }
 
 struct wlr_swapchain *wlr_ahb_swapchain_create_with_dmabuf_attribs(struct wlr_dmabuf_attributes *dmabuf) {
-	struct wlr_swapchain *swapchain = calloc(1, sizeof(*swapchain));
+	struct wlr_swapchain *swapchain = (struct wlr_swapchain *)calloc(1, sizeof(*swapchain));
 	if (swapchain == NULL) {
 		return NULL;
 	}
