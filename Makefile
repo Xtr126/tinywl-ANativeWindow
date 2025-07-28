@@ -25,6 +25,9 @@ buffer_utils.o: buffer_utils.c
 ahb_swapchain.o: ahb_swapchain.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
+cros_gralloc_util.o: cros_gralloc_util.cpp
+	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
+
 
 buffer_manager.o: buffer_manager.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
@@ -32,11 +35,11 @@ buffer_manager.o: buffer_manager.cpp
 dmabuf.o: dmabuf.c
 	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-libtinywl.so: tinywl.o buffer_utils.o dmabuf.o buffer_manager.o ahb_swapchain.o
+libtinywl.so: tinywl.o buffer_utils.o dmabuf.o buffer_manager.o ahb_swapchain.o cros_gralloc_util.o
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer_utils.o dmabuf.o buffer_manager.o ahb_swapchain.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer_utils.o dmabuf.o buffer_manager.o ahb_swapchain.o cros_gralloc_util.o xdg-shell-protocol.h
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean
