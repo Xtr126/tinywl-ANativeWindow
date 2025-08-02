@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <new>
 #include <unistd.h> // For close()
+#include <android/api-level.h> // For close()
 
 extern "C" {
     #include <wlr/util/log.h>
@@ -132,31 +133,32 @@ void buffer_manager_send_buffer(BufferManager* manager,
         return;
     }
 
-#if __ANDROID_API__ >= 36
-    if (on_release_callback) {
-        ASurfaceTransaction_setBufferWithRelease(
-            transaction, surface_control, buffer, acquire_fence_fd,
-            context, on_release_callback);
-    } else {
-        // If no callback is needed, use the simpler function.
-        ASurfaceTransaction_setBuffer(transaction, surface_control, buffer, acquire_fence_fd);
-    }
-#else
-    ASurfaceTransaction_setBuffer(transaction, manager->surface_control, buffer, acquire_fence_fd);
-    if (on_release_callback) {
-        // We must allocate a temporary context to pass user callback and context.
-        OnCompleteContext* callback_context = new (std::nothrow) OnCompleteContext{
-            .user_callback = on_release_callback, 
-            .user_context = context,
-        };
-        if (callback_context) {
-            ASurfaceTransaction_setOnComplete(transaction, callback_context, on_complete_pre_api36);
+    // TODO: When termux upgrades ndk-sysroot to r28
+    /*if (android_get_device_api_level() > __ANDROID_API_V__)
+        if (on_release_callback) {
+            ASurfaceTransaction_setBufferWithRelease(
+                transaction, manager->surface_control, buffer, acquire_fence_fd,
+                context, on_release_callback);
         } else {
-            ALOGE("Failed to allocate memory for OnCompleteContext wrapper.");
-            // We can't set the callback, but we can still try to apply the transaction below.
+            // If no callback is needed, use the simpler function.
+            ASurfaceTransaction_setBuffer(transaction, manager->surface_control, buffer, acquire_fence_fd);
         }
-    }
-#endif
+    else {*/
+        ASurfaceTransaction_setBuffer(transaction, manager->surface_control, buffer, acquire_fence_fd);
+        if (on_release_callback) {
+            // We must allocate a temporary context to pass user callback and context.
+            OnCompleteContext* callback_context = new (std::nothrow) OnCompleteContext{
+                .user_callback = on_release_callback, 
+                .user_context = context,
+            };
+            if (callback_context) {
+                ASurfaceTransaction_setOnComplete(transaction, callback_context, on_complete_pre_api36);
+            } else {
+                ALOGE("Failed to allocate memory for OnCompleteContext wrapper.");
+                // We can't set the callback, but we can still try to apply the transaction below.
+            }
+        }
+    //}
 
     ASurfaceTransaction_apply(transaction);
     ASurfaceTransaction_delete(transaction);
