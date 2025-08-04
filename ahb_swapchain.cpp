@@ -1,5 +1,3 @@
-#include "cutils/native_handle.h"
-#include "vndk/hardware_buffer.h"
 #include <android/hardware_buffer.h>
 #include <assert.h>
 #include <cstddef>
@@ -9,8 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "ahb_swapchain.h"
-#include "cros_gralloc_handle.h"
-#include "cros_gralloc_util.h"
+#include "buffer_utils.h"
 
 extern "C" {
 	#include <wlr/util/log.h>
@@ -67,34 +64,13 @@ static struct wlr_ahb_buffer *create_wlr_ahb_buffer(uint32_t width, uint32_t hei
 	AHardwareBuffer_allocate(&desc, &buffer->ahb);
 	wlr_buffer_init(&buffer->base, &ahb_buffer_impl,
 		width, height);
-	
-	const buffer_handle_t handle = AHardwareBuffer_getNativeHandle(buffer->ahb);
-	
-	if (!handle) {
-		wlr_log(WLR_ERROR, "Failed to get handle from AHardwareBuffer");
+
+	if (!AHardwareBuffer_getDmabufAttributes(buffer->ahb, &buffer->dmabuf)) {
+		wlr_log(WLR_ERROR, "Failed to get dmabuf attributes from AHardwareBuffer");
 		ahb_destroy(&buffer->base);
 		return NULL;
 	}
-    cros_gralloc_handle* crosHandle = (cros_gralloc_handle*)handle;
 	
-	log_cros_gralloc_handle(crosHandle);
-	buffer->dmabuf = cros_gralloc_to_wlr_dmabuf(crosHandle);
-	// dmabuf->fd[0] = gralloc_handle(handle)->prime_fd;
-
-	if (buffer->dmabuf.fd[0] < 0) {
-		wlr_log(WLR_ERROR, "Failed to get dmabuf from AHardwareBuffer");
-		ahb_destroy(&buffer->base);
-		return NULL;
-	}
-
-	wlr_log(WLR_DEBUG, "wlr_dmabuf_attributes:");
-	wlr_log(WLR_DEBUG, "  %dx%d, format: 0x%x, modifier: 0x%lx",
-			buffer->dmabuf.width, buffer->dmabuf.height, buffer->dmabuf.format, buffer->dmabuf.modifier);
-	for (int i = 0; i < buffer->dmabuf.n_planes; ++i) {
-		wlr_log(WLR_DEBUG, "  Plane %d: fd=%d, stride=%u, offset=%u",
-				i, buffer->dmabuf.fd[i], buffer->dmabuf.stride[i], buffer->dmabuf.offset[i]);
-	}
-
 	return buffer;
 }
 

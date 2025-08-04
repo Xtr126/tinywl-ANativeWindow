@@ -19,8 +19,8 @@ xdg-shell-protocol.h:
 tinywl.o: tinywl.c xdg-shell-protocol.h
 	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-buffer_utils.o: buffer_utils.c
-	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
+buffer_utils.o: buffer_utils.cpp
+	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
 ahb_swapchain.o: ahb_swapchain.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<

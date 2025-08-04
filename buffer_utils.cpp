@@ -1,14 +1,18 @@
 #include <android/hardware_buffer.h>
 #include <string.h>
 #include <unistd.h>
-#include "buffer_presenter.h"
 #include "cutils/native_handle.h"
 #include "drm_fourcc.h"
 #include "vndk/hardware_buffer.h"
 #include "buffer_utils.h"
-#include <wlr/interfaces/wlr_buffer.h>
-#include <wlr/util/log.h>
 #include <fcntl.h>
+#include "cros_gralloc_handle.h"
+#include "cros_gralloc_util.h"
+
+extern "C" {
+    #include <wlr/interfaces/wlr_buffer.h>
+    #include <wlr/util/log.h>
+}
 
 // Convert Android format to DRM format
 uint32_t android_to_drm_format(uint32_t android_format) {
@@ -28,29 +32,36 @@ uint32_t android_to_drm_format(uint32_t android_format) {
 
 // Get DMA-BUF attributes from AHardwareBuffer
 bool AHardwareBuffer_getDmabufAttributes(AHardwareBuffer *ahb, 
-                           struct wlr_dmabuf_attributes *attribs) {
-    AHardwareBuffer_Desc desc;
-    AHardwareBuffer_describe(ahb, &desc);
-    
-    // Get native handle (requires Android 8.0+)
-    const native_handle_t *handle = AHardwareBuffer_getNativeHandle(ahb);
-    if (!handle || handle->numFds < 1) return false;
-    
-    memset(attribs, 0, sizeof(*attribs));
-    attribs->n_planes = 1;
-    attribs->width = desc.width;
-    attribs->height = desc.height;
-    attribs->format = android_to_drm_format(desc.format);
-    
-    // Get modifier 
-    attribs->modifier = DRM_FORMAT_MOD_INVALID;
-    
-    // Get first plane's FD
-    attribs->fd[0] = dup(handle->data[0]);  // Duplicate FD for ownership
-    attribs->stride[0] = desc.stride;
-    attribs->offset[0] = 0;
-    
+                           struct wlr_dmabuf_attributes *outAtrribs) {
+    const buffer_handle_t handle = AHardwareBuffer_getNativeHandle(ahb);
+	
+	if (!handle) {
+		wlr_log(WLR_ERROR, "Failed to get handle from AHardwareBuffer");
+		return false;
+	}
+    cros_gralloc_handle* crosHandle = (cros_gralloc_handle*)handle;
+	
+	log_cros_gralloc_handle(crosHandle);
+	struct wlr_dmabuf_attributes attribs = cros_gralloc_to_wlr_dmabuf(crosHandle);
+	// dmabuf->fd[0] = gralloc_handle(handle)->prime_fd;
+
+	if (attribs.fd[0] < 0) {
+		wlr_log(WLR_ERROR, "Failed to get dmabuf fd from AHardwareBuffer");
+		return false;
+	}
+
+	wlr_log(WLR_DEBUG, "wlr_dmabuf_attributes:");
+	wlr_log(WLR_DEBUG, "  %dx%d, format: 0x%x, modifier: 0x%lx",
+			attribs.width, attribs.height, attribs.format, attribs.modifier);
+	
+            for (int i = 0; i < attribs.n_planes; ++i)
+		wlr_log(WLR_DEBUG, "  Plane %d: fd=%d, stride=%u, offset=%u",
+				i, attribs.fd[i], attribs.stride[i], attribs.offset[i]);
+                
+
+    wlr_dmabuf_attributes_copy(outAtrribs, &attribs);
     return true;
+
 }
 
 void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *buffer_presenter) {
@@ -63,8 +74,8 @@ void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *b
         
     // Create AHardwareBuffer from DMA-BUF
     AHardwareBuffer_Desc ahb_desc = {
-        .width = wlr_buffer->width,
-        .height = wlr_buffer->height,
+        .width = static_cast<uint32_t>(wlr_buffer->width),
+        .height = static_cast<uint32_t>(wlr_buffer->height),
         .layers = 1,
         .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
         .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE,
