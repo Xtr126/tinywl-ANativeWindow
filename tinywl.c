@@ -35,6 +35,8 @@
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
 
+#include "input_receiver.h"
+
 /* For brevity's sake, struct members are annotated where they are used. */
 enum tinywl_cursor_mode {
 	TINYWL_CURSOR_PASSTHROUGH,
@@ -122,6 +124,7 @@ struct tinywl_keyboard {
 
 ANativeWindow *window;
 BufferManager *buffer_presenter;
+InputReceiver *input_receiver;
 struct wlr_swapchain *ahb_swapchain;
 
 
@@ -940,12 +943,6 @@ static int tinywl_start() {
 		return 1;
 	}
 
-	buffer_presenter = buffer_presenter_create(window);
-
-	if (buffer_presenter == NULL) {
-		return 1;
-	}
-
 	wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
@@ -1108,11 +1105,33 @@ static int tinywl_start() {
 	wl_display_destroy(server.wl_display);
 
 	buffer_presenter_destroy(buffer_presenter);
+	input_receiver_destroy(input_receiver);
 	return 0;
 }
+
 JNIEXPORT int JNICALL
-Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface) {
+Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface,
+                                              jobject input_transfer_token,
+                                              jlong input_thread_looper_native_ptr) {
 		// Get ANativeWindow from jSurface
 	window = ANativeWindow_fromSurface(env, jSurface);
+
+	ALooper* aLooper = (ALooper*)input_thread_looper_native_ptr;
+	AInputTransferToken* hostInputTransferToken = AInputTransferToken_fromJava(env, input_transfer_token);
+	
+	// TODO: Pre API 35 doesn't have AInputReceiver
+	input_receiver = input_receiver_create(window, hostInputTransferToken, aLooper);
+
+	buffer_presenter = buffer_presenter_create(window);
+
+	if (buffer_presenter == NULL || input_receiver == NULL) {
+		return -1;
+	}
+
 	return tinywl_start();
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_xtr_compound_Tinywl_getALooperNativePtrForThread(JNIEnv *env, jclass clazz) {
+	return (long)ALooper_forThread();
 }
