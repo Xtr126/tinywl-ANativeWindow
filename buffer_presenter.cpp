@@ -1,4 +1,4 @@
-#include "buffer_manager.h"
+#include "buffer_presenter.h"
 
 #include <android/api-level.h>
 #include <android/surface_control.h>
@@ -59,7 +59,7 @@ static void on_complete_pre_api36(void* context, ASurfaceTransactionStats* stats
 // --- End of API-specific implementation details ---
 
 
-BufferManager* buffer_manager_create(ANativeWindow* window) {
+BufferManager* buffer_presenter_create(ANativeWindow* window) {
     if (!window) {
         ALOGE("Cannot create BufferManager with a null ANativeWindow.");
         return nullptr;
@@ -84,7 +84,7 @@ BufferManager* buffer_manager_create(ANativeWindow* window) {
     return manager;
 }
 
-void buffer_manager_destroy(BufferManager* manager) {
+void buffer_presenter_destroy(BufferManager* manager) {
     if (!manager) {
         return;
     }
@@ -99,14 +99,14 @@ void buffer_manager_destroy(BufferManager* manager) {
     ALOGI("BufferManager destroyed.");
 }
 
-void buffer_manager_send_buffer(BufferManager* manager,
+void buffer_presenter_send_buffer(BufferManager* manager,
                                AHardwareBuffer* buffer,
                                int acquire_fence_fd,
                                BufferManager_OnReleaseCallback on_release_callback,
                                void* context) {
     if (manager->surface_control == nullptr) {
         ALOGE("ASurfaceControl is null");
-        buffer_manager_destroy(manager);
+        buffer_presenter_destroy(manager);
          // We are now responsible for the fence fd.
         if (acquire_fence_fd >= 0) {
             close(acquire_fence_fd);

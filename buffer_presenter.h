@@ -55,7 +55,7 @@ typedef void (*BufferManager_OnReleaseCallback)(void* _Null_unspecified context,
  * exceeds that of the BufferManager.
  * @return A pointer to the newly created BufferManager, or NULL on failure.
  */
-BufferManager* _Nullable buffer_manager_create(ANativeWindow* _Nonnull window);
+BufferManager* _Nullable buffer_presenter_create(ANativeWindow* _Nonnull window);
 
 /**
  * @brief Destroys a BufferManager instance and cleans up its resources.
@@ -65,7 +65,7 @@ BufferManager* _Nullable buffer_manager_create(ANativeWindow* _Nonnull window);
  * @param manager A pointer to the BufferManager instance to be destroyed.
  * If manager is NULL, the function does nothing.
  */
-void buffer_manager_destroy(BufferManager* _Nonnull manager);
+void buffer_presenter_destroy(BufferManager* _Nonnull manager);
 
 /**
  * @brief Sends a hardware buffer to the associated ANativeWindow using ASurfaceTransaction.
@@ -85,7 +85,7 @@ void buffer_manager_destroy(BufferManager* _Nonnull manager);
  * @param context A user-defined pointer that will be passed to the on_release_callback.
  * @return 0 on success, or a negative value on error.
  */
-void buffer_manager_send_buffer(BufferManager* _Nonnull manager,
+void buffer_presenter_send_buffer(BufferManager* _Nonnull manager,
                                AHardwareBuffer* _Nonnull buffer,
                                int acquire_fence_fd,
                                BufferManager_OnReleaseCallback _Null_unspecified on_release_callback,

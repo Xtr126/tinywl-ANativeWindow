@@ -1,7 +1,7 @@
 #include <android/hardware_buffer.h>
 #include <string.h>
 #include <unistd.h>
-#include "buffer_manager.h"
+#include "buffer_presenter.h"
 #include "cutils/native_handle.h"
 #include "drm_fourcc.h"
 #include "vndk/hardware_buffer.h"
@@ -54,7 +54,7 @@ bool AHardwareBuffer_getDmabufAttributes(AHardwareBuffer *ahb,
     return true;
 }
 
-void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *buffer_manager) {
+void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *buffer_presenter) {
     struct wlr_dmabuf_attributes dmabuf_attrs = {0};
 
     if (!wlr_buffer_get_dmabuf(wlr_buffer, &dmabuf_attrs)) {
@@ -88,5 +88,5 @@ void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *b
         return;
     }
 
-    buffer_manager_send_buffer(buffer_manager, ahb, -1, NULL, NULL);
+    buffer_presenter_send_buffer(buffer_presenter, ahb, -1, NULL, NULL);
 }

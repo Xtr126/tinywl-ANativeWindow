@@ -28,7 +28,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "buffer_utils.h"
-#include "buffer_manager.h"
+#include "buffer_presenter.h"
 #include "ahb_swapchain.h"
 #include "wlr/render/swapchain.h"
 
@@ -121,7 +121,7 @@ struct tinywl_keyboard {
 };
 
 ANativeWindow *window;
-BufferManager *buffer_manager;
+BufferManager *buffer_presenter;
 struct wlr_swapchain *ahb_swapchain;
 
 
@@ -593,7 +593,7 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	wlr_scene_output_commit(scene_output, &options);
 	struct wlr_ahb_buffer *ahb_buffer = ahb_buffer_from_buffer(ahb_swapchain->slots[0].buffer);
 	
-	buffer_manager_send_buffer(buffer_manager, ahb_buffer->ahb, -1, NULL, NULL);
+	buffer_presenter_send_buffer(buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -940,9 +940,9 @@ static int tinywl_start() {
 		return 1;
 	}
 
-	buffer_manager = buffer_manager_create(window);
+	buffer_presenter = buffer_presenter_create(window);
 
-	if (buffer_manager == NULL) {
+	if (buffer_presenter == NULL) {
 		return 1;
 	}
 
@@ -1107,7 +1107,7 @@ static int tinywl_start() {
 	wlr_backend_destroy(server.backend);
 	wl_display_destroy(server.wl_display);
 
-	buffer_manager_destroy(buffer_manager);
+	buffer_presenter_destroy(buffer_presenter);
 	return 0;
 }
 JNIEXPORT int JNICALL

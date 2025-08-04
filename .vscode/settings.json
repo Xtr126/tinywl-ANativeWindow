@@ -3,7 +3,8 @@
         "-I/data/data/com.termux/files/usr/include/wlroots-0.18",
         "-I/data/data/com.termux/files/usr/include/libdrm",
         "-I/data/data/com.termux/files/usr/include/pixman-1",
+        "-I${workspaceFolder}",
         "-DWLR_USE_UNSTABLE",
-        "-I."
+        "--target=x86_64-linux-android30"
     ]
 }
