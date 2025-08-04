@@ -32,14 +32,11 @@ cros_gralloc_util.o: cros_gralloc_util.cpp
 buffer_presenter.o: buffer_presenter.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-dmabuf.o: dmabuf.c
-	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
-
-libtinywl.so: tinywl.o buffer_utils.o dmabuf.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o
+libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer_utils.o dmabuf.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o xdg-shell-protocol.h
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean
