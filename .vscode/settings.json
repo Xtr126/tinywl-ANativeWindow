@@ -4,7 +4,8 @@
         "-I/data/data/com.termux/files/usr/include/libdrm",
         "-I/data/data/com.termux/files/usr/include/pixman-1",
         "-I${workspaceFolder}",
+        "-I${workspaceFolder}/aidl_source_output_dir/debug/out",
         "-DWLR_USE_UNSTABLE",
-        "--target=x86_64-linux-android30"
+        "--target=x86_64-linux-android33"
     ]
 }

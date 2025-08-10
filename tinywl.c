@@ -1,3 +1,5 @@
+#include <android/binder_ibinder.h>
+#include <android/binder_ibinder_jni.h>
 #include <android/native_window.h>
 #include <asm-generic/errno.h>
 #include <assert.h>
@@ -35,7 +37,8 @@
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
 
-#include "input_receiver.h"
+#include "TinywlInputService.h"
+
 
 /* For brevity's sake, struct members are annotated where they are used. */
 enum tinywl_cursor_mode {
@@ -124,7 +127,6 @@ struct tinywl_keyboard {
 
 ANativeWindow *window;
 BufferManager *buffer_presenter;
-InputReceiver *input_receiver;
 struct wlr_swapchain *ahb_swapchain;
 
 
@@ -1104,36 +1106,16 @@ static int tinywl_start() {
 	wl_display_destroy(server.wl_display);
 
 	buffer_presenter_destroy(buffer_presenter);
-	input_receiver_destroy(input_receiver);
 	return 0;
 }
 
 JNIEXPORT int JNICALL
-Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface,
-                                              jobject input_transfer_token,
-                                              jlong input_thread_looper_native_ptr) {
+Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface) {
 	wlr_log_init(WLR_DEBUG, NULL);
 
 	// Get ANativeWindow from jSurface
 	window = ANativeWindow_fromSurface(env, jSurface);
 		
-	if (input_transfer_token == NULL) wlr_log(WLR_ERROR, "Input transfer token is null");
-	
-	ALooper* aLooper = (ALooper*)input_thread_looper_native_ptr;
-	if (!aLooper) wlr_log(WLR_ERROR, "Failed to obtain native pointer for ALooper");
-	
-
-	if (aLooper && input_transfer_token != NULL) {
-
-		AInputTransferToken* hostInputTransferToken = AInputTransferToken_fromJava(env, input_transfer_token);
-
-		// TODO: Pre API 35 doesn't have AInputReceiver
-		input_receiver = input_receiver_create(window, hostInputTransferToken, aLooper);
-		wlr_log(WLR_DEBUG, "Created input receiver");
-	} else {
-		wlr_log(WLR_ERROR, "Failed to create input receiver");
-	}
-
 	buffer_presenter = buffer_presenter_create(window);
 
 	if (buffer_presenter == NULL) {
@@ -1143,7 +1125,9 @@ Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject
 	return tinywl_start();
 }
 
-JNIEXPORT jlong JNICALL
-Java_com_xtr_compound_Tinywl_getALooperNativePtrForThread(JNIEnv *env, jclass clazz) {
-	return (long)ALooper_forThread();
+
+JNIEXPORT jobject JNICALL
+Java_com_xtr_compound_Tinywl_nativeGetBinder(JNIEnv *env, jclass clazz) {
+	AIBinder* binder = TinywlInputService_asBinder();
+	return AIBinder_toJavaBinder(env, binder);		
 }
