@@ -1,18 +1,16 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl8668083705324803605.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl/com/xtr/compound/ITinywlInput.aidl
+ * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl8327565060585927857.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl/tinywl/ITinywlInput.aidl
  */
-#include "aidl/com/xtr/compound/ITinywlInput.h"
+#include "aidl/tinywl/ITinywlInput.h"
 
 #include <android/binder_parcel_utils.h>
-#include <aidl/com/xtr/compound/BnTinywlInput.h>
-#include <aidl/com/xtr/compound/BpTinywlInput.h>
+#include <aidl/tinywl/BnTinywlInput.h>
+#include <aidl/tinywl/BpTinywlInput.h>
 
 namespace aidl {
-namespace com {
-namespace xtr {
-namespace compound {
-static binder_status_t _aidl_com_xtr_compound_ITinywlInput_onTransact(AIBinder* _aidl_binder, transaction_code_t _aidl_code, const AParcel* _aidl_in, AParcel* _aidl_out) {
+namespace tinywl {
+static binder_status_t _aidl_tinywl_ITinywlInput_onTransact(AIBinder* _aidl_binder, transaction_code_t _aidl_code, const AParcel* _aidl_in, AParcel* _aidl_out) {
   (void)_aidl_in;
   (void)_aidl_out;
   binder_status_t _aidl_ret_status = STATUS_UNKNOWN_TRANSACTION;
@@ -58,7 +56,7 @@ static binder_status_t _aidl_com_xtr_compound_ITinywlInput_onTransact(AIBinder* 
   return _aidl_ret_status;
 }
 
-static AIBinder_Class* _g_aidl_com_xtr_compound_ITinywlInput_clazz = ::ndk::ICInterface::defineClass(ITinywlInput::descriptor, _aidl_com_xtr_compound_ITinywlInput_onTransact);
+static AIBinder_Class* _g_aidl_tinywl_ITinywlInput_clazz = ::ndk::ICInterface::defineClass(ITinywlInput::descriptor, _aidl_tinywl_ITinywlInput_onTransact);
 
 BpTinywlInput::BpTinywlInput(const ::ndk::SpAIBinder& binder) : BpCInterface(binder) {}
 BpTinywlInput::~BpTinywlInput() {}
@@ -147,20 +145,20 @@ BpTinywlInput::~BpTinywlInput() {}
 BnTinywlInput::BnTinywlInput() {}
 BnTinywlInput::~BnTinywlInput() {}
 ::ndk::SpAIBinder BnTinywlInput::createBinder() {
-  AIBinder* binder = AIBinder_new(_g_aidl_com_xtr_compound_ITinywlInput_clazz, static_cast<void*>(this));
+  AIBinder* binder = AIBinder_new(_g_aidl_tinywl_ITinywlInput_clazz, static_cast<void*>(this));
   #ifdef BINDER_STABILITY_SUPPORT
   AIBinder_markCompilationUnitStability(binder);
   #endif  // BINDER_STABILITY_SUPPORT
   return ::ndk::SpAIBinder(binder);
 }
 // Source for ITinywlInput
-const char* ITinywlInput::descriptor = "com.xtr.compound.ITinywlInput";
+const char* ITinywlInput::descriptor = "tinywl.ITinywlInput";
 ITinywlInput::ITinywlInput() {}
 ITinywlInput::~ITinywlInput() {}
 
 
 std::shared_ptr<ITinywlInput> ITinywlInput::fromBinder(const ::ndk::SpAIBinder& binder) {
-  if (!AIBinder_associateClass(binder.get(), _g_aidl_com_xtr_compound_ITinywlInput_clazz)) {
+  if (!AIBinder_associateClass(binder.get(), _g_aidl_tinywl_ITinywlInput_clazz)) {
     #if __ANDROID_API__ >= 31
     const AIBinder_Class* originalClass = AIBinder_getClass(binder.get());
     if (originalClass == nullptr) return nullptr;
@@ -218,7 +216,5 @@ std::shared_ptr<ITinywlInput> ITinywlInput::default_impl = nullptr;
 bool ITinywlInputDefault::isRemote() {
   return false;
 }
-}  // namespace compound
-}  // namespace xtr
-}  // namespace com
+}  // namespace tinywl
 }  // namespace aidl

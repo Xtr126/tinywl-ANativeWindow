@@ -1,10 +1,10 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl8668083705324803605.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl/com/xtr/compound/ITinywlInput.aidl
+ * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl8327565060585927857.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl/tinywl/ITinywlInput.aidl
  */
 #pragma once
 
-#include "aidl/com/xtr/compound/ITinywlInput.h"
+#include "aidl/tinywl/ITinywlInput.h"
 
 #include <android/binder_ibinder.h>
 #include <cassert>
@@ -16,9 +16,7 @@
 #endif
 
 namespace aidl {
-namespace com {
-namespace xtr {
-namespace compound {
+namespace tinywl {
 class BnTinywlInput : public ::ndk::BnCInterface<ITinywlInput> {
 public:
   BnTinywlInput();
@@ -43,7 +41,5 @@ private:
   std::shared_ptr<ITinywlInput> _impl;
 };
 
-}  // namespace compound
-}  // namespace xtr
-}  // namespace com
+}  // namespace tinywl
 }  // namespace aidl

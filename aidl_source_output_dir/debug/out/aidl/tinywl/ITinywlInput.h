@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl8668083705324803605.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl/com/xtr/compound/ITinywlInput.aidl
+ * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl8327565060585927857.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl/tinywl/ITinywlInput.aidl
  */
 #pragma once
 
@@ -23,9 +23,7 @@ namespace aidl::com::android::server::inputflinger {
 class KeyEvent;
 }  // namespace aidl::com::android::server::inputflinger
 namespace aidl {
-namespace com {
-namespace xtr {
-namespace compound {
+namespace tinywl {
 class ITinywlInputDelegator;
 
 class ITinywlInput : public ::ndk::ICInterface {
@@ -55,7 +53,5 @@ public:
   ::ndk::SpAIBinder asBinder() override;
   bool isRemote() override;
 };
-}  // namespace compound
-}  // namespace xtr
-}  // namespace com
+}  // namespace tinywl
 }  // namespace aidl
