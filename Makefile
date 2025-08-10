@@ -5,7 +5,7 @@ WAYLAND_SCANNER=$(shell $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner
 PKGS="wlroots-0.18" wayland-server xkbcommon
 
 CFLAGS+=$(shell $(PKG_CONFIG) --cflags $(PKGS))
-CFLAGS+=--target=x86_64-linux-android30
+CFLAGS+=--target=x86_64-linux-android35
 
 LIBS=$(shell $(PKG_CONFIG) --libs $(PKGS))
 LIBS+=-lsync -lnativewindow -lcutils -landroid
@@ -17,6 +17,9 @@ xdg-shell-protocol.h:
 		$(WAYLAND_PROTOCOLS)/stable/xdg-shell/xdg-shell.xml $@
 
 tinywl.o: tinywl.c xdg-shell-protocol.h
+	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
+
+input_receiver.o: input_receiver.c
 	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
 buffer_utils.o: buffer_utils.cpp
@@ -32,11 +35,11 @@ cros_gralloc_util.o: cros_gralloc_util.cpp
 buffer_presenter.o: buffer_presenter.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o
+libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_receiver.o
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_receiver.o xdg-shell-protocol.h
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean

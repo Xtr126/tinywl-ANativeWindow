@@ -926,7 +926,6 @@ static void server_new_xdg_popup(struct wl_listener *listener, void *data) {
 }
 
 static int tinywl_start() {
-	wlr_log_init(WLR_DEBUG, NULL);
 	char *startup_cmd = NULL;
 
 	struct tinywl_server server = {0};
@@ -1113,18 +1112,31 @@ JNIEXPORT int JNICALL
 Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface,
                                               jobject input_transfer_token,
                                               jlong input_thread_looper_native_ptr) {
-		// Get ANativeWindow from jSurface
-	window = ANativeWindow_fromSurface(env, jSurface);
+	wlr_log_init(WLR_DEBUG, NULL);
 
-	ALooper* aLooper = (ALooper*)input_thread_looper_native_ptr;
-	AInputTransferToken* hostInputTransferToken = AInputTransferToken_fromJava(env, input_transfer_token);
+	// Get ANativeWindow from jSurface
+	window = ANativeWindow_fromSurface(env, jSurface);
+		
+	if (input_transfer_token == NULL) wlr_log(WLR_ERROR, "Input transfer token is null");
 	
-	// TODO: Pre API 35 doesn't have AInputReceiver
-	input_receiver = input_receiver_create(window, hostInputTransferToken, aLooper);
+	ALooper* aLooper = (ALooper*)input_thread_looper_native_ptr;
+	if (!aLooper) wlr_log(WLR_ERROR, "Failed to obtain native pointer for ALooper");
+	
+
+	if (aLooper && input_transfer_token != NULL) {
+
+		AInputTransferToken* hostInputTransferToken = AInputTransferToken_fromJava(env, input_transfer_token);
+
+		// TODO: Pre API 35 doesn't have AInputReceiver
+		input_receiver = input_receiver_create(window, hostInputTransferToken, aLooper);
+		wlr_log(WLR_DEBUG, "Created input receiver");
+	} else {
+		wlr_log(WLR_ERROR, "Failed to create input receiver");
+	}
 
 	buffer_presenter = buffer_presenter_create(window);
 
-	if (buffer_presenter == NULL || input_receiver == NULL) {
+	if (buffer_presenter == NULL) {
 		return -1;
 	}
 
