@@ -23,6 +23,7 @@
 
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
+#include <wlr/types/wlr_scene.h>
 
 #include "TinywlInputService.h"
 

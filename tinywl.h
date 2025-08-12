@@ -1,8 +1,3 @@
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_data_device.h>
@@ -11,7 +6,6 @@ extern "C" {
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_pointer.h>
-#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xcursor_manager.h>
@@ -63,7 +57,3 @@ struct tinywl_server {
 	struct wl_list outputs;
 	struct wl_listener new_output;
 };
-
-#ifdef __cplusplus
-}
-#endif

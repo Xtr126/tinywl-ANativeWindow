@@ -5,7 +5,7 @@ WAYLAND_SCANNER=$(shell $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner
 PKGS="wlroots-0.18" wayland-server xkbcommon
 
 CFLAGS+=$(shell $(PKG_CONFIG) --cflags $(PKGS))
-CFLAGS+=--target=x86_64-linux-android35
+CFLAGS+=--target=x86_64-linux-android33
 
 LIBS=$(shell $(PKG_CONFIG) --libs $(PKGS))
 LIBS+=-lsync -lnativewindow -lcutils -landroid
@@ -28,15 +28,25 @@ ahb_swapchain.o: ahb_swapchain.cpp
 cros_gralloc_util.o: cros_gralloc_util.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
+input_service.o: TinywlInputService.cpp
+	$(CXX) -g $(CFLAGS) -fPIC -I. -I./aidl_source_output_dir/debug/out -DWLR_USE_UNSTABLE -o $@ -c $<
 
 buffer_presenter.o: buffer_presenter.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o
+find_cpp = $(firstword $(wildcard aidl_source_output_dir/**/$(basename $(notdir $1)).cpp))
+
+%.o:
+	$(CXX) -g $(CFLAGS) -fPIC -I. -I./aidl_source_output_dir/debug/out -DWLR_USE_UNSTABLE -o $@ -c  $(shell find aidl_source_output_dir -name "$(basename $(notdir $@)).cpp")
+
+# Flatten to object file names (just base filename.o)
+AIDL_OBJS := $(shell find aidl_source_output_dir -name '*.cpp' -exec basename {} .cpp \; | sed 's/$$/.o/')
+
+libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o $(AIDL_OBJS)
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o xdg-shell-protocol.h $(AIDL_OBJS)
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean

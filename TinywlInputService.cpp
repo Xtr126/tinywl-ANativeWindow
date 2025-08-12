@@ -1,8 +1,8 @@
 #include <aidl/tinywl/BnTinywlInput.h>
-#include "TinywlInputService.h"
 #include "aidl/com/android/server/inputflinger/KeyEventAction.h"
 
 extern "C" {
+  #include "TinywlInputService.h"
   #include <wlr/interfaces/wlr_keyboard.h>
   #include <wlr/interfaces/wlr_pointer.h>
 }
@@ -25,6 +25,8 @@ namespace tinywl {
 
   public:
     ::ndk::ScopedAStatus onKeyEvent(const KeyEvent& in_event, bool* _aidl_return) override {
+      std::cout << in_event.toString() << std::endl;
+
       struct wlr_keyboard_key_event wlr_event = {
           .time_msec = (uint32_t)in_event.eventTime,
           .keycode = (uint32_t)in_event.scanCode,
@@ -48,6 +50,7 @@ namespace tinywl {
       return ::ndk::ScopedAStatus::ok();
     }
     ::ndk::ScopedAStatus onMotionEvent(const MotionEvent& in_event, bool* _aidl_return) override {
+      std::cout << in_event.toString() << std::endl;
       return ::ndk::ScopedAStatus::ok();
     }
 
