@@ -8,7 +8,7 @@ CFLAGS+=$(shell $(PKG_CONFIG) --cflags $(PKGS))
 CFLAGS+=--target=x86_64-linux-android33
 
 LIBS=$(shell $(PKG_CONFIG) --libs $(PKGS))
-LIBS+=-lsync -lnativewindow -lcutils -landroid -lbinder_ndk
+LIBS+=-lsync -lnativewindow -lcutils -landroid -lbinder_ndk -linputqueue
 # wayland-scanner is a tool which generates C headers and rigging for Wayland
 # protocols, which are specified in XML. wlroots requires you to rig these up
 # to your build system yourself and provide them in the include path.
@@ -34,19 +34,16 @@ input_service.o: TinywlInputService.cpp
 buffer_presenter.o: buffer_presenter.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
-find_cpp = $(firstword $(wildcard aidl_source_output_dir/**/$(basename $(notdir $1)).cpp))
+ABI := $(shell getprop ro.product.cpu.abi | tr -d '\r')
+APK_PATH := $(shell pm path com.xtr.compound 2>/dev/null | cut -d ':' -f 2 | tr -d '\r')
+APK_DIR := $(shell dirname $(APK_PATH))
+NATIVE_LIB_PATH=$(APK_DIR)/lib/$(ABI)
 
-%.o:
-	$(CXX) -g $(CFLAGS) -fPIC -I. -I./aidl_source_output_dir/debug/out -DWLR_USE_UNSTABLE -o $@ -c  $(shell find aidl_source_output_dir -name "$(basename $(notdir $@)).cpp")
-
-# Flatten to object file names (just base filename.o)
-AIDL_OBJS := $(shell find aidl_source_output_dir -name '*.cpp' -exec basename {} .cpp \; | sed 's/$$/.o/')
-
-libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o $(AIDL_OBJS)
-	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -fPIC -shared -o $@
+libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o
+	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -L$(NATIVE_LIB_PATH) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o xdg-shell-protocol.h $(AIDL_OBJS)
+	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o xdg-shell-protocol.h
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean
