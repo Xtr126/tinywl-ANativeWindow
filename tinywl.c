@@ -1,5 +1,3 @@
-#include <android/binder_ibinder.h>
-#include <android/binder_ibinder_jni.h>
 #include <android/native_window.h>
 #include <asm-generic/errno.h>
 #include <assert.h>
@@ -1059,6 +1057,8 @@ static int tinywl_start() {
 	wl_display_destroy(server.wl_display);
 
 	buffer_presenter_destroy(buffer_presenter);
+	TinywlInputService_destroy(tinywlInputService);
+	
 	return 0;
 }
 
@@ -1081,7 +1081,7 @@ Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject
 
 JNIEXPORT jobject JNICALL
 Java_com_xtr_compound_Tinywl_nativeGetBinder(JNIEnv *env, jclass clazz) {
-	tinywlInputService = TinywlInputService_make();
+	tinywlInputService = TinywlInputService_make();	
 	AIBinder* binder = TinywlInputService_asBinder(tinywlInputService);
 	return AIBinder_toJavaBinder(env, binder);		
 }

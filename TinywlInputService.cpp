@@ -69,22 +69,43 @@ namespace tinywl {
 
 }  // namespace tinywl
 
+
+using SharedPtrType = std::shared_ptr<tinywl::TinywlInputService>;
+
 AIBinder* TinywlInputService_asBinder(TinywlInputService service) {
-  return service->asBinder().get();
+  auto instance = static_cast<SharedPtrType *>(service)->get();
+  return instance->asBinder().get();
 }
 
 TinywlInputService TinywlInputService_make() {
-  return ndk::SharedRefBase::make<tinywl::TinywlInputService>();
+  auto service = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
+  
+  //  Allocate a new shared_ptr on the heap and move the
+  //  existing one into it. 
+  SharedPtrType* shared_ptr_on_heap = new SharedPtrType(std::move(service));
+  
+  return static_cast<TinywlInputService>(shared_ptr_on_heap);
 }
 
 void TinywlInputService_setServer(TinywlInputService service, struct tinywl_server* server) {
-  service->setTinywlServer(server);
+  auto instance = static_cast<SharedPtrType *>(service)->get();
+  instance->setTinywlServer(server);
 }
 
 struct wlr_keyboard TinywlInputService_getKeyboard(TinywlInputService service) {
-  return service->keyboard;
+  auto instance = static_cast<SharedPtrType *>(service)->get();
+  return instance->keyboard;
 }
 
 struct wlr_pointer TinywlInputService_getPointer(TinywlInputService service) {
-  return service->pointer;
+  auto instance = static_cast<SharedPtrType *>(service)->get();
+  return instance->pointer;
+}
+
+void TinywlInputService_destroy(TinywlInputService service) {
+    if (service) {
+        // Reconstruct the shared_ptr to trigger its destructor
+        auto shared_ptr = static_cast<SharedPtrType *>(service);
+        delete shared_ptr;
+    }
 }
