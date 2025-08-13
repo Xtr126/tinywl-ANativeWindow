@@ -27,8 +27,6 @@
 
 #include "TinywlInputService.h"
 
-
-
 struct tinywl_output {
 	struct wl_list link;
 	struct tinywl_server *server;

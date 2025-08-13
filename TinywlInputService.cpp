@@ -2,10 +2,12 @@
 #include "aidl/com/android/server/inputflinger/KeyEventAction.h"
 
 extern "C" {
-  #include "TinywlInputService.h"
   #include <wlr/interfaces/wlr_keyboard.h>
   #include <wlr/interfaces/wlr_pointer.h>
 }
+
+#include "TinywlInputService.h"
+
 
 const struct wlr_pointer_impl tinywl_pointer_impl = {
     .name = "tinywl-pointer",
@@ -68,24 +70,21 @@ namespace tinywl {
 }  // namespace tinywl
 
 AIBinder* TinywlInputService_asBinder(TinywlInputService service) {
-  return static_cast<tinywl::TinywlInputService *>(service)
-              ->asBinder().get();
+  return service->asBinder().get();
 }
 
 TinywlInputService TinywlInputService_make() {
-  auto service = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
-  return static_cast<TinywlInputService>(service.get());
+  return ndk::SharedRefBase::make<tinywl::TinywlInputService>();
 }
 
 void TinywlInputService_setServer(TinywlInputService service, struct tinywl_server* server) {
-  static_cast<tinywl::TinywlInputService *>(service)->
-    setTinywlServer(server);
+  service->setTinywlServer(server);
 }
 
 struct wlr_keyboard TinywlInputService_getKeyboard(TinywlInputService service) {
-  return static_cast<tinywl::TinywlInputService *>(service)->keyboard;
+  return service->keyboard;
 }
 
 struct wlr_pointer TinywlInputService_getPointer(TinywlInputService service) {
-  return static_cast<tinywl::TinywlInputService *>(service)->pointer;
+  return service->pointer;
 }
