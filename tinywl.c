@@ -69,7 +69,6 @@ struct tinywl_keyboard {
 ANativeWindow *window;
 BufferManager *buffer_presenter;
 struct wlr_swapchain *ahb_swapchain;
-TinywlInputService tinywlInputService;
 
 static void focus_toplevel(struct tinywl_toplevel *toplevel, struct wlr_surface *surface) {
 	/* Note: this function only deals with keyboard focus. */
@@ -998,12 +997,12 @@ static int tinywl_start() {
 	server.new_input.notify = server_new_input;
 	wl_signal_add(&server.backend->events.new_input, &server.new_input);
 	
-	TinywlInputService_setServer(tinywlInputService, &server);
+	TinywlInputService_setServer(&server);
 
-	struct wlr_input_device keyboard = TinywlInputService_getKeyboard(tinywlInputService).base;
+	struct wlr_input_device keyboard = TinywlInputService_getKeyboard().base;
 	server_new_input(&server.new_input, &keyboard);
 	
-	struct wlr_input_device pointer = TinywlInputService_getPointer(tinywlInputService).base;
+	struct wlr_input_device pointer = TinywlInputService_getPointer().base;
 	server_new_input(&server.new_input, &pointer);
 
 	server.seat = wlr_seat_create(server.wl_display, "seat0");
@@ -1057,8 +1056,8 @@ static int tinywl_start() {
 	wl_display_destroy(server.wl_display);
 
 	buffer_presenter_destroy(buffer_presenter);
-	TinywlInputService_destroy(tinywlInputService);
-	
+	TinywlInputService_destroy();
+
 	return 0;
 }
 
@@ -1076,12 +1075,4 @@ Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject
 	}
 
 	return tinywl_start();
-}
-
-
-JNIEXPORT jobject JNICALL
-Java_com_xtr_compound_Tinywl_nativeGetBinder(JNIEnv *env, jclass clazz) {
-	tinywlInputService = TinywlInputService_make();	
-	AIBinder* binder = TinywlInputService_asBinder(tinywlInputService);
-	return AIBinder_toJavaBinder(env, binder);		
 }

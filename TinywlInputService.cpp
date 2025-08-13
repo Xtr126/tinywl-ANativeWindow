@@ -70,45 +70,40 @@ namespace tinywl {
 }  // namespace tinywl
 
 
+static std::shared_ptr<tinywl::TinywlInputService> g_shared_ptr;
 
 
-TinywlInputService TinywlInputService_make() {
-  auto service = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
-  
-  //  Allocate a new shared_ptr on the heap and move the
-  //  existing one into it. 
-  using SharedPtrType = std::shared_ptr<tinywl::TinywlInputService>;
-  SharedPtrType* shared_ptr_on_heap = new SharedPtrType(std::move(service));
-
-  return shared_ptr_on_heap->get();
+void TinywlInputService_make() {
+  g_shared_ptr = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
 }
 
 using instanceType = tinywl::TinywlInputService *;
 
-AIBinder* TinywlInputService_asBinder(TinywlInputService service) {
-  auto instance = static_cast<instanceType>(service);
-  return instance->asBinder().get();
+AIBinder* TinywlInputService_asBinder() {
+  return ndk::SharedRefBase::make<tinywl::TinywlInputService>()->asBinder().get();
 }
 
-void TinywlInputService_setServer(TinywlInputService service, struct tinywl_server* server) {
-  auto instance = static_cast<instanceType>(service);
-  instance->setTinywlServer(server);
+void TinywlInputService_setServer(struct tinywl_server* server) {
+  g_shared_ptr->setTinywlServer(server);
 }
 
-struct wlr_keyboard TinywlInputService_getKeyboard(TinywlInputService service) {
-  auto instance = static_cast<instanceType>(service);
-  return instance->keyboard;
+struct wlr_keyboard TinywlInputService_getKeyboard() {
+  return g_shared_ptr->keyboard;
 }
 
-struct wlr_pointer TinywlInputService_getPointer(TinywlInputService service) {
-  auto instance = static_cast<instanceType>(service);
-  return instance->pointer;
+struct wlr_pointer TinywlInputService_getPointer() {
+  return g_shared_ptr->pointer;
 }
 
-void TinywlInputService_destroy(TinywlInputService service) {
-    if (service) {
-        // Reconstruct the shared_ptr to trigger its destructor
-        auto shared_ptr = static_cast<instanceType>(service);
-        delete shared_ptr;
+void TinywlInputService_destroy() {
+    if (g_shared_ptr.get()) {
+        delete g_shared_ptr.get();
     }
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_com_xtr_compound_Tinywl_nativeGetBinder(JNIEnv *env, jclass clazz) {
+    g_shared_ptr = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
+    return AIBinder_toJavaBinder(env, g_shared_ptr->asBinder().get());
 }
