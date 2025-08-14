@@ -903,8 +903,7 @@ static int tinywl_start() {
 	 * The allocator is the bridge between the renderer and the backend. It
 	 * handles the buffer creation, allowing wlroots to render onto the
 	 * screen */
-	server.allocator = wlr_allocator_autocreate(server.backend,
-		server.renderer);
+	server.allocator = wlr_ahb_allocator_create();
 	if (server.allocator == NULL) {
 		wlr_log(WLR_ERROR, "failed to create wlr_allocator");
 		return 1;

@@ -8,7 +8,7 @@ CFLAGS+=$(shell $(PKG_CONFIG) --cflags $(PKGS))
 CFLAGS+=--target=x86_64-linux-android33
 
 LIBS=$(shell $(PKG_CONFIG) --libs $(PKGS))
-LIBS+=-lsync -lnativewindow -lcutils -landroid -lbinder_ndk -linputqueue
+LIBS+=-lsync -lnativewindow -lcutils -landroid -lbinder_ndk -linputqueue -lc++_shared
 # wayland-scanner is a tool which generates C headers and rigging for Wayland
 # protocols, which are specified in XML. wlroots requires you to rig these up
 # to your build system yourself and provide them in the include path.
@@ -34,16 +34,19 @@ input_service.o: TinywlInputService.cpp
 buffer_presenter.o: buffer_presenter.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
+ahb_wlr_allocator.o: ahb_wlr_allocator.c
+	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
+
 ABI := $(shell getprop ro.product.cpu.abi | tr -d '\r')
 APK_PATH := $(shell pm path com.xtr.compound 2>/dev/null | cut -d ':' -f 2 | tr -d '\r')
 APK_DIR := $(shell dirname $(APK_PATH))
 NATIVE_LIB_PATH=$(APK_DIR)/lib/$(ABI)
 
-libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o
+libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o ahb_wlr_allocator.o
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -L$(NATIVE_LIB_PATH) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o ahb_swapchain.o cros_gralloc_util.o input_service.o ahb_wlr_allocator.o xdg-shell-protocol.h
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean
