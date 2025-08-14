@@ -1,5 +1,4 @@
 #include <aidl/tinywl/BnTinywlInput.h>
-#include "aidl/com/android/server/inputflinger/KeyEventAction.h"
 
 extern "C" {
   #include <wlr/interfaces/wlr_keyboard.h>
@@ -59,7 +58,10 @@ namespace tinywl {
     void setTinywlServer(struct tinywl_server* server) {
       this->server = server;
       wlr_keyboard_init(&keyboard, &tinywl_keyboard_impl, "tinywl-keyboard");
+      server->new_input.notify(&server->new_input, &keyboard.base);
+
       wlr_pointer_init(&pointer, &tinywl_pointer_impl, "tinywl-pointer");
+      server->new_input.notify(&server->new_input, &pointer.base);
     }
 
     struct wlr_keyboard keyboard;
@@ -85,14 +87,6 @@ AIBinder* TinywlInputService_asBinder() {
 
 void TinywlInputService_setServer(struct tinywl_server* server) {
   g_shared_ptr->setTinywlServer(server);
-}
-
-struct wlr_keyboard TinywlInputService_getKeyboard() {
-  return g_shared_ptr->keyboard;
-}
-
-struct wlr_pointer TinywlInputService_getPointer() {
-  return g_shared_ptr->pointer;
 }
 
 void TinywlInputService_destroy() {

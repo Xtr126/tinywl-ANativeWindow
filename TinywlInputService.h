@@ -10,10 +10,6 @@ extern "C" {
 
 void TinywlInputService_setServer(struct tinywl_server* server);
 
-struct wlr_keyboard TinywlInputService_getKeyboard();
-
-struct wlr_pointer TinywlInputService_getPointer();
-
 void TinywlInputService_destroy();
 
 #ifdef __cplusplus
