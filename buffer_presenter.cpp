@@ -106,7 +106,6 @@ void buffer_presenter_send_buffer(BufferManager* manager,
                                void* context) {
     if (manager->surface_control == nullptr) {
         ALOGE("ASurfaceControl is null");
-        buffer_presenter_destroy(manager);
          // We are now responsible for the fence fd.
         if (acquire_fence_fd >= 0) {
             close(acquire_fence_fd);
