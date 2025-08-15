@@ -1077,6 +1077,7 @@ Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject
 
 JNIEXPORT void JNICALL
 Java_com_xtr_compound_Tinywl_onSurfaceChanged(JNIEnv *env, jclass clazz, jobject surface) {
+	if (output == NULL) return;
 	window = ANativeWindow_fromSurface(env, surface);
 
 	wlr_log(WLR_DEBUG, "Setting buffers geometry for ANativeWindow");
