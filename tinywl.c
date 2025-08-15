@@ -886,6 +886,7 @@ static int tinywl_start() {
 	}
 
 	wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
+	TinywlInputService_onWindowResize(ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
 	 * can also specify a renderer using the WLR_RENDERER env var.

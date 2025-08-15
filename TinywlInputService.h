@@ -10,6 +10,8 @@ extern "C" {
 
 void TinywlInputService_setServer(struct tinywl_server* server);
 
+void TinywlInputService_onWindowResize(int32_t width, int32_t height);
+
 void TinywlInputService_destroy();
 
 #ifdef __cplusplus
