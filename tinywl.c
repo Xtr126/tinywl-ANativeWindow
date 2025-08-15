@@ -8,6 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
+#include <wayland-util.h>
 #include <wlr/backend.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
@@ -69,6 +70,7 @@ struct tinywl_keyboard {
 ANativeWindow *window;
 BufferManager *buffer_presenter;
 struct wlr_swapchain *ahb_swapchain;
+struct wlr_output *output; 
 
 static void focus_toplevel(struct tinywl_toplevel *toplevel, struct wlr_surface *surface) {
 	/* Note: this function only deals with keyboard focus. */
@@ -585,7 +587,7 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 	struct wlr_output_state state;
 	wlr_output_state_init(&state);
 	wlr_output_state_set_enabled(&state, true);
-
+	
 	/* Some backends don't have modes. DRM+KMS does, and we need to set a mode
 	 * before we can use the output. The mode is a tuple of (width, height,
 	 * refresh rate), and each monitor supports only a specific set of modes. We
@@ -885,7 +887,7 @@ static int tinywl_start() {
 		return 1;
 	}
 
-	wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
+	output = wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
 	TinywlInputService_onWindowResize(ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
@@ -1071,4 +1073,26 @@ Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject
 	}
 
 	return tinywl_start();
+}
+
+JNIEXPORT void JNICALL
+Java_com_xtr_compound_Tinywl_onSurfaceChanged(JNIEnv *env, jclass clazz, jobject surface) {
+	window = ANativeWindow_fromSurface(env, surface);
+
+	wlr_log(WLR_DEBUG, "Setting buffers geometry for ANativeWindow");
+	int ret = ANativeWindow_setBuffersGeometry(window, 0, 0,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
+	if (ret != 0) {
+		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
+	}
+
+	TinywlInputService_onWindowResize(ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
+	buffer_presenter_destroy(buffer_presenter);
+	buffer_presenter = buffer_presenter_create(window);
+	
+	struct wlr_output_state state;
+	wlr_output_state_init(&state);
+	wlr_output_state_set_custom_mode(&state, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window), 0);
+	/* Atomically applies the new output state. */
+	wlr_output_commit_state(output, &state);
+	wlr_output_state_finish(&state);
 }
