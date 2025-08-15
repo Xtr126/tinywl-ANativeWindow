@@ -2,6 +2,7 @@
 #include <asm-generic/errno.h>
 #include <assert.h>
 #include <getopt.h>
+#include <malloc.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -17,14 +18,13 @@
 
 #include "buffer_utils.h"
 #include "buffer_presenter.h"
-#include "ahb_swapchain.h"
-#include "wlr/render/swapchain.h"
 
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
 #include <wlr/types/wlr_scene.h>
 
 #include "TinywlInputService.h"
+#include "ahb_wlr_allocator.h"
 
 struct tinywl_output {
 	struct wl_list link;
@@ -69,7 +69,6 @@ struct tinywl_keyboard {
 
 ANativeWindow *window;
 BufferManager *buffer_presenter;
-struct wlr_swapchain *ahb_swapchain;
 struct wlr_output *output; 
 
 static void focus_toplevel(struct tinywl_toplevel *toplevel, struct wlr_surface *surface) {
@@ -529,19 +528,9 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct wlr_scene_output *scene_output = wlr_scene_get_scene_output(
 		scene, output->wlr_output);
 	
-	if (!ahb_swapchain) {
-		ahb_swapchain = wlr_ahb_swapchain_create_for_output(output->wlr_output);
-	}
-
-	struct wlr_scene_output_state_options options = {0};
-	options.swapchain = ahb_swapchain;
 	/* Render the scene if needed and commit the output */
-	// wlr_scene_output_commit(scene_output, NULL);
-	wlr_scene_output_commit(scene_output, &options);
-	struct wlr_ahb_buffer *ahb_buffer = ahb_buffer_from_buffer(ahb_swapchain->slots[0].buffer);
+	wlr_scene_output_commit(scene_output, NULL);
 	
-	buffer_presenter_send_buffer(buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
-
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	wlr_scene_output_send_frame_done(scene_output, &now);
@@ -570,6 +559,9 @@ static void output_destroy(struct wl_listener *listener, void *data) {
 static void output_commit(struct wl_listener *listener, void *data) {
 	struct tinywl_output *output = wl_container_of(listener, output, commit);
 	const struct wlr_output_event_commit *event = data;
+	if (event->state->buffer == NULL) return;
+	struct wlr_ahb_buffer *ahb_buffer = get_ahb_buffer_from_buffer(event->state->buffer);
+	buffer_presenter_send_buffer(buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
 }
 
 static void server_new_output(struct wl_listener *listener, void *data) {
