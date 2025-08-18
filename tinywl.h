@@ -79,9 +79,6 @@ struct tinywl_toplevel {
 	BufferManager* buffer_presenter;
 };
 
-
-
-// "data" is a private data pointer to supply to the callbacks.
-static struct tinywl_server tinywl_init(void *data);
+static struct tinywl_server tinywl_init();
 
 static void tinywl_run_loop(struct tinywl_server server);

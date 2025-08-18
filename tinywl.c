@@ -23,8 +23,9 @@
 #include <wlr/backend/headless.h>
 #include <wlr/types/wlr_scene.h>
 
-#include "TinywlInputService.h"
 #include "ahb_wlr_allocator.h"
+
+#include "tinywl.h"
 
 struct tinywl_output {
 	struct wl_list link;
@@ -34,21 +35,6 @@ struct tinywl_output {
 	struct wl_listener request_state;
 	struct wl_listener destroy;
 	struct wl_listener commit;
-};
-
-struct tinywl_toplevel {
-	struct wl_list link;
-	struct tinywl_server *server;
-	struct wlr_xdg_toplevel *xdg_toplevel;
-	struct wlr_scene_tree *scene_tree;
-	struct wl_listener map;
-	struct wl_listener unmap;
-	struct wl_listener commit;
-	struct wl_listener destroy;
-	struct wl_listener request_move;
-	struct wl_listener request_resize;
-	struct wl_listener request_maximize;
-	struct wl_listener request_fullscreen;
 };
 
 struct tinywl_popup {
@@ -67,8 +53,6 @@ struct tinywl_keyboard {
 	struct wl_listener destroy;
 };
 
-ANativeWindow *window;
-BufferManager *buffer_presenter;
 struct wlr_output *output; 
 
 static void focus_toplevel(struct tinywl_toplevel *toplevel, struct wlr_surface *surface) {
@@ -560,8 +544,6 @@ static void output_commit(struct wl_listener *listener, void *data) {
 	struct tinywl_output *output = wl_container_of(listener, output, commit);
 	const struct wlr_output_event_commit *event = data;
 	if (event->state->buffer == NULL) return;
-	struct wlr_ahb_buffer *ahb_buffer = get_ahb_buffer_from_buffer(event->state->buffer);
-	buffer_presenter_send_buffer(buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
 }
 
 static void server_new_output(struct wl_listener *listener, void *data) {
@@ -588,12 +570,6 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 	struct wlr_output_mode *mode = wlr_output_preferred_mode(wlr_output);
 	if (mode != NULL) {
 		wlr_output_state_set_mode(&state, mode);
-	}
-
-	wlr_log(WLR_DEBUG, "Setting buffers geometry for ANativeWindow to %dx%d", wlr_output->width, wlr_output->height);
-	int ret = ANativeWindow_setBuffersGeometry(window, wlr_output->width, wlr_output->height,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
-	if (ret != 0) {
-		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
 	}
 
 	wlr_output_state_set_render_format(&state, AHB_FORMAT_PREFERRED_DRM);
@@ -647,6 +623,7 @@ static void xdg_toplevel_map(struct wl_listener *listener, void *data) {
 	wl_list_insert(&toplevel->server->toplevels, &toplevel->link);
 
 	focus_toplevel(toplevel, toplevel->xdg_toplevel->base->surface);
+	toplevel->server->callbacks.xdg_toplevel_add(toplevel->xdg_toplevel, toplevel->server->callbacks.data);
 }
 
 static void xdg_toplevel_unmap(struct wl_listener *listener, void *data) {
@@ -659,11 +636,19 @@ static void xdg_toplevel_unmap(struct wl_listener *listener, void *data) {
 	}
 
 	wl_list_remove(&toplevel->link);
+	toplevel->server->callbacks.xdg_toplevel_remove(toplevel->xdg_toplevel, toplevel->server->callbacks.data);
 }
 
 static void xdg_toplevel_commit(struct wl_listener *listener, void *data) {
 	/* Called when a new surface state is committed. */
 	struct tinywl_toplevel *toplevel = wl_container_of(listener, toplevel, commit);
+
+	if (toplevel->xdg_toplevel->base->surface->buffer != NULL) {
+		if (toplevel->buffer_presenter != NULL) {
+			struct wlr_ahb_buffer *ahb_buffer = get_ahb_buffer_from_buffer(&toplevel->xdg_toplevel->base->surface->buffer->base);
+			buffer_presenter_send_buffer(toplevel->buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
+		}
+	}
 
 	if (toplevel->xdg_toplevel->base->initial_commit) {
 		/* When an xdg_surface performs an initial commit, the compositor must
@@ -861,11 +846,12 @@ static void server_new_xdg_popup(struct wl_listener *listener, void *data) {
 	wl_signal_add(&xdg_popup->events.destroy, &popup->destroy);
 }
 
-static int tinywl_start() {
+static struct tinywl_server tinywl_start(unsigned int width, unsigned int height) {
 	char *startup_cmd = NULL;
 
 	struct tinywl_server server = {0};
 	
+	wlr_log_init(WLR_DEBUG, NULL);
 	/* The Wayland display is managed by libwayland. It handles accepting
 	 * clients from the Unix socket, manging Wayland globals, and so on. */
 	server.wl_display = wl_display_create();
@@ -876,11 +862,10 @@ static int tinywl_start() {
 	server.backend = wlr_headless_backend_create(wl_display_get_event_loop(server.wl_display));
 	if (server.backend == NULL) {
 		wlr_log(WLR_ERROR, "failed to create wlr_backend");
-		return 1;
+		return server;
 	}
 
-	output = wlr_headless_add_output(server.backend, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
-	TinywlInputService_onWindowResize(ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
+	output = wlr_headless_add_output(server.backend, width, height);
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
 	 * can also specify a renderer using the WLR_RENDERER env var.
@@ -889,7 +874,7 @@ static int tinywl_start() {
 	server.renderer = wlr_renderer_autocreate(server.backend);
 	if (server.renderer == NULL) {
 		wlr_log(WLR_ERROR, "failed to create wlr_renderer");
-		return 1;
+		return server;
 	}
 
 	wlr_renderer_init_wl_display(server.renderer, server.wl_display);
@@ -901,7 +886,7 @@ static int tinywl_start() {
 	server.allocator = wlr_ahb_allocator_create();
 	if (server.allocator == NULL) {
 		wlr_log(WLR_ERROR, "failed to create wlr_allocator");
-		return 1;
+		return server;
 	}
 
 	/* This creates some hands-off wlroots interfaces. The compositor is
@@ -994,8 +979,6 @@ static int tinywl_start() {
 	
 	server.seat = wlr_seat_create(server.wl_display, "seat0");
 	
-	TinywlInputService_setServer(&server);
-
 	server.request_cursor.notify = seat_request_cursor;
 	wl_signal_add(&server.seat->events.request_set_cursor,
 			&server.request_cursor);
@@ -1007,7 +990,7 @@ static int tinywl_start() {
 	const char *socket = wl_display_add_socket_auto(server.wl_display);
 	if (!socket) {
 		wlr_backend_destroy(server.backend);
-		return 1;
+		return server;
 	}
 
 	/* Start the backend. This will enumerate outputs and inputs, become the DRM
@@ -1015,7 +998,7 @@ static int tinywl_start() {
 	if (!wlr_backend_start(server.backend)) {
 		wlr_backend_destroy(server.backend);
 		wl_display_destroy(server.wl_display);
-		return 1;
+		return server;
 	}
 
 	/* Set the WAYLAND_DISPLAY environment variable to our socket and run the
@@ -1026,12 +1009,18 @@ static int tinywl_start() {
 			execl("/bin/sh", "/bin/sh", "-c", startup_cmd, (void *)NULL);
 		}
 	}
+
+	wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s",
+		socket);
+
+	return server;
+}
+
+static void tinywl_run_loop(struct tinywl_server server) {
 	/* Run the Wayland event loop. This does not return until you exit the
 	 * compositor. Starting the backend rigged up all of the necessary event
 	 * loop configuration to listen to libinput events, DRM events, generate
 	 * frame events at the refresh rate, and so on. */
-	wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s",
-			socket);
 	wl_display_run(server.wl_display);
 
 	/* Once wl_display_run returns, we destroy all clients then shut down the
@@ -1044,48 +1033,4 @@ static int tinywl_start() {
 	wlr_renderer_destroy(server.renderer);
 	wlr_backend_destroy(server.backend);
 	wl_display_destroy(server.wl_display);
-
-	buffer_presenter_destroy(buffer_presenter);
-	TinywlInputService_destroy();
-
-	return 0;
-}
-
-JNIEXPORT int JNICALL
-Java_com_xtr_compound_Tinywl_onSurfaceCreated(JNIEnv *env, jclass clazz, jobject jSurface) {
-	wlr_log_init(WLR_DEBUG, NULL);
-
-	// Get ANativeWindow from jSurface
-	window = ANativeWindow_fromSurface(env, jSurface);
-		
-	buffer_presenter = buffer_presenter_create(window);
-
-	if (buffer_presenter == NULL) {
-		return -1;
-	}
-
-	return tinywl_start();
-}
-
-JNIEXPORT void JNICALL
-Java_com_xtr_compound_Tinywl_onSurfaceChanged(JNIEnv *env, jclass clazz, jobject surface) {
-	if (output == NULL) return;
-	window = ANativeWindow_fromSurface(env, surface);
-
-	wlr_log(WLR_DEBUG, "Setting buffers geometry for ANativeWindow");
-	int ret = ANativeWindow_setBuffersGeometry(window, 0, 0,AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
-	if (ret != 0) {
-		wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
-	}
-
-	TinywlInputService_onWindowResize(ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
-	buffer_presenter_destroy(buffer_presenter);
-	buffer_presenter = buffer_presenter_create(window);
-	
-	struct wlr_output_state state;
-	wlr_output_state_init(&state);
-	wlr_output_state_set_custom_mode(&state, ANativeWindow_getWidth(window), ANativeWindow_getHeight(window), 0);
-	/* Atomically applies the new output state. */
-	wlr_output_commit_state(output, &state);
-	wlr_output_state_finish(&state);
 }
