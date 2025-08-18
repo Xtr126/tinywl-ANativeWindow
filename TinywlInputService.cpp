@@ -4,12 +4,12 @@
 #include <cstdint>
 #include <stdint.h>
 #include <wayland-server-protocol.h>
+#include "TinywlInputService.h"
 
 extern "C" {
   #include <wlr/interfaces/wlr_keyboard.h>
   #include <wlr/interfaces/wlr_pointer.h>
   #include <linux/input-event-codes.h>
-  #include "tinywl.h"
 }
 
 const struct wlr_pointer_impl tinywl_pointer_impl = {
@@ -23,13 +23,8 @@ const struct wlr_keyboard_impl tinywl_keyboard_impl = {
 extern float PointerCoords_getAxisValue(const aidl::android::hardware::input::common::PointerCoords& coords, int32_t axis);
 
 namespace tinywl {
-  using namespace aidl::com::android::server::inputflinger;
-  using namespace aidl::android::hardware::input::common;
 
-  class TinywlInputService : public aidl::tinywl::BnTinywlInput {
-  private:
-    struct tinywl_server* server;
-    void sendPointerButtonEvent(const MotionEvent& in_event) {
+    void TinywlInputService::sendPointerButtonEvent(const MotionEvent& in_event) {
          
       struct wlr_pointer_button_event wlr_event = {
           .pointer = &pointer,
@@ -64,7 +59,7 @@ namespace tinywl {
       wl_signal_emit_mutable(&pointer.events.frame, &pointer);
     }
 
-    void sendPointerPosition(const MotionEvent& in_event) {
+    void TinywlInputService::sendPointerPosition(const MotionEvent& in_event) {
       float x = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::X));
       float y = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::Y));
 
@@ -79,7 +74,7 @@ namespace tinywl {
       wl_signal_emit_mutable(&pointer.events.frame, &pointer);
     }
 
-    void sendScrollEvent(const MotionEvent& in_event) {
+    void TinywlInputService::sendScrollEvent(const MotionEvent& in_event) {
       float delta = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::Y));
       struct wlr_pointer_axis_event wlr_event = {
         .pointer = &pointer,
@@ -95,8 +90,7 @@ namespace tinywl {
 
     }
 
-  public:
-    ::ndk::ScopedAStatus onKeyEvent(const KeyEvent& in_event, bool* _aidl_return) override {
+    ::ndk::ScopedAStatus TinywlInputService::onKeyEvent(const KeyEvent& in_event, bool* _aidl_return) {
       std::cout << in_event.toString() << std::endl;
       
       if (in_event.source != Source::KEYBOARD) {
@@ -125,7 +119,7 @@ namespace tinywl {
       *_aidl_return = true;
       return ::ndk::ScopedAStatus::ok();
     }
-    ::ndk::ScopedAStatus onMotionEvent(const MotionEvent& in_event, bool* _aidl_return) override {
+    ::ndk::ScopedAStatus TinywlInputService::onMotionEvent(const MotionEvent& in_event, bool* _aidl_return) {
       std::cout << in_event.toString() << std::endl;
       
       if (in_event.source != Source::MOUSE) {
@@ -153,7 +147,7 @@ namespace tinywl {
       return ::ndk::ScopedAStatus::ok();
     }
 
-    void setTinywlServer(struct tinywl_server* server) {
+    void TinywlInputService::setTinywlServer(struct tinywl_server* server) {
       this->server = server;
       wlr_keyboard_init(&keyboard, &tinywl_keyboard_impl, "tinywl-keyboard");
       server->new_input.notify(&server->new_input, &keyboard.base);
@@ -162,13 +156,8 @@ namespace tinywl {
       server->new_input.notify(&server->new_input, &pointer.base);
     }
 
-    struct wlr_keyboard keyboard;
-
-    struct wlr_pointer pointer;
-
     int32_t width;
     int32_t height;
-  };  // class TinywlInputService
 
 }  // namespace tinywl
 
