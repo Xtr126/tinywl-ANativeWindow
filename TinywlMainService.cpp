@@ -57,8 +57,8 @@ namespace tinywl {
       buffer_presenter_destroy(toplevel->buffer_presenter);
     }
 
-    ::ndk::ScopedAStatus startTinywl(const std::shared_ptr< ITinywlXdgTopLevel> &in_xdgTopLevelCallback) override {
-        auto server = tinywl_init();
+    ::ndk::ScopedAStatus startTinywl(const std::shared_ptr<ITinywlXdgTopLevel> &in_xdgTopLevelCallback) override {
+        auto server = tinywl_init(1280, 1280);
 
         server.callbacks.data = in_xdgTopLevelCallback->asBinder().get();
 
@@ -86,7 +86,7 @@ namespace tinywl {
         mHandler = std::make_unique<Handler>(looper);
     }
 
-    const std::shared_ptr<TinywlInputService> mInputService = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
+    const std::shared_ptr<TinywlInputService> mInputService = TinywlInputService_make();
 
   private:
     std::unique_ptr<Handler> mHandler;  

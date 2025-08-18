@@ -5,7 +5,7 @@ WAYLAND_SCANNER=$(shell $(PKG_CONFIG) --variable=wayland_scanner wayland-scanner
 PKGS="wlroots-0.18" wayland-server xkbcommon
 
 CFLAGS+=$(shell $(PKG_CONFIG) --cflags $(PKGS))
-CFLAGS+=--target=x86_64-linux-android33
+CFLAGS+=--target=x86_64-linux-android34
 
 LIBS=$(shell $(PKG_CONFIG) --libs $(PKGS))
 LIBS+=-lsync -lnativewindow -lcutils -landroid -lbinder_ndk -linputqueue -lc++_shared

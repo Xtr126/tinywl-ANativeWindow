@@ -846,7 +846,7 @@ static void server_new_xdg_popup(struct wl_listener *listener, void *data) {
 	wl_signal_add(&xdg_popup->events.destroy, &popup->destroy);
 }
 
-static struct tinywl_server tinywl_start(unsigned int width, unsigned int height) {
+struct tinywl_server tinywl_init(unsigned int width, unsigned int height) {
 	char *startup_cmd = NULL;
 
 	struct tinywl_server server = {0};
@@ -1016,7 +1016,7 @@ static struct tinywl_server tinywl_start(unsigned int width, unsigned int height
 	return server;
 }
 
-static void tinywl_run_loop(struct tinywl_server server) {
+void tinywl_run_loop(struct tinywl_server server) {
 	/* Run the Wayland event loop. This does not return until you exit the
 	 * compositor. Starting the backend rigged up all of the necessary event
 	 * loop configuration to listen to libinput events, DRM events, generate

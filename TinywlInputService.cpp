@@ -171,3 +171,7 @@ namespace tinywl {
   };  // class TinywlInputService
 
 }  // namespace tinywl
+
+std::shared_ptr<tinywl::TinywlInputService> TinywlInputService_make() { 
+  return ndk::SharedRefBase::make<tinywl::TinywlInputService>();
+}

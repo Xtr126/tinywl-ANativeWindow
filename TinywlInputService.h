@@ -17,4 +17,6 @@ namespace tinywl {
   };
 }  // namespace tinywl
 
+std::shared_ptr<tinywl::TinywlInputService> TinywlInputService_make();
+
 #endif

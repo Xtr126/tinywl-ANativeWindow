@@ -6,6 +6,6 @@
         "-I${workspaceFolder}",
         "-I${workspaceFolder}/aidl_source_output_dir/debug/out",
         "-DWLR_USE_UNSTABLE",
-        "--target=x86_64-linux-android33"
+        "--target=x86_64-linux-android34"
     ]
 }
