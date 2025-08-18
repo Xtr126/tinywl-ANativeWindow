@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/debug/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl11663799383700681341.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl/com/xtr/tinywl/XdgTopLevel.aidl
+ * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/debug/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl7914482093276438645.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl/com/xtr/tinywl/XdgTopLevel.aidl
  */
 #pragma once
 
@@ -29,15 +29,16 @@ public:
   std::string appId;
   std::string title;
   ::aidl::android::view::Surface surface;
+  int64_t nativePtr = 0L;
 
   binder_status_t readFromParcel(const AParcel* parcel);
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator==(const XdgTopLevel& _rhs) const {
-    return std::tie(appId, title, surface) == std::tie(_rhs.appId, _rhs.title, _rhs.surface);
+    return std::tie(appId, title, surface, nativePtr) == std::tie(_rhs.appId, _rhs.title, _rhs.surface, _rhs.nativePtr);
   }
   inline bool operator<(const XdgTopLevel& _rhs) const {
-    return std::tie(appId, title, surface) < std::tie(_rhs.appId, _rhs.title, _rhs.surface);
+    return std::tie(appId, title, surface, nativePtr) < std::tie(_rhs.appId, _rhs.title, _rhs.surface, _rhs.nativePtr);
   }
   inline bool operator!=(const XdgTopLevel& _rhs) const {
     return !(*this == _rhs);
@@ -59,6 +60,7 @@ public:
     _aidl_os << "appId: " << ::android::internal::ToString(appId);
     _aidl_os << ", title: " << ::android::internal::ToString(title);
     _aidl_os << ", surface: " << ::android::internal::ToString(surface);
+    _aidl_os << ", nativePtr: " << ::android::internal::ToString(nativePtr);
     _aidl_os << "}";
     return _aidl_os.str();
   }

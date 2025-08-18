@@ -10,8 +10,7 @@
 #include <wlr/types/wlr_subcompositor.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
-
-
+#include "buffer_presenter.h"
 
 /* For brevity's sake, struct members are annotated where they are used. */
 enum tinywl_cursor_mode {
@@ -56,4 +55,33 @@ struct tinywl_server {
 	struct wlr_output_layout *output_layout;
 	struct wl_list outputs;
 	struct wl_listener new_output;
+
+	struct callbacks {
+		void *data;
+		void (*xdg_toplevel_add)(struct wlr_xdg_toplevel *xdg_toplevel, void *data);
+		void (*xdg_toplevel_remove)(struct wlr_xdg_toplevel *xdg_toplevel, void *data);
+	} callbacks;
 };
+
+struct tinywl_toplevel {
+	struct wl_list link;
+	struct tinywl_server *server;
+	struct wlr_xdg_toplevel *xdg_toplevel;
+	struct wlr_scene_tree *scene_tree;
+	struct wl_listener map;
+	struct wl_listener unmap;
+	struct wl_listener commit;
+	struct wl_listener destroy;
+	struct wl_listener request_move;
+	struct wl_listener request_resize;
+	struct wl_listener request_maximize;
+	struct wl_listener request_fullscreen;
+	BufferManager* buffer_presenter;
+};
+
+
+
+// "data" is a private data pointer to supply to the callbacks.
+static struct tinywl_server tinywl_init(void *data);
+
+static void tinywl_run_loop(struct tinywl_server server);

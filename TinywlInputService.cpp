@@ -9,10 +9,8 @@ extern "C" {
   #include <wlr/interfaces/wlr_keyboard.h>
   #include <wlr/interfaces/wlr_pointer.h>
   #include <linux/input-event-codes.h>
+  #include "tinywl.h"
 }
-
-#include "TinywlInputService.h"
-
 
 const struct wlr_pointer_impl tinywl_pointer_impl = {
     .name = "tinywl-pointer",
@@ -173,38 +171,3 @@ namespace tinywl {
   };  // class TinywlInputService
 
 }  // namespace tinywl
-
-static std::shared_ptr<tinywl::TinywlInputService> g_shared_ptr;
-
-
-void TinywlInputService_make() {
-  g_shared_ptr = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
-}
-
-using instanceType = tinywl::TinywlInputService *;
-
-AIBinder* TinywlInputService_asBinder() {
-  return ndk::SharedRefBase::make<tinywl::TinywlInputService>()->asBinder().get();
-}
-
-void TinywlInputService_setServer(struct tinywl_server* server) {
-  g_shared_ptr->setTinywlServer(server);
-}
-
-void TinywlInputService_onWindowResize(int32_t width, int32_t height) {
-  g_shared_ptr->width = width;
-  g_shared_ptr->height = height;
-}
-
-void TinywlInputService_destroy() {
-    if (g_shared_ptr.get()) {
-        delete g_shared_ptr.get();
-    }
-}
-
-extern "C"
-JNIEXPORT jobject JNICALL
-Java_com_xtr_compound_Tinywl_nativeGetBinder(JNIEnv *env, jclass clazz) {
-    g_shared_ptr = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
-    return AIBinder_toJavaBinder(env, g_shared_ptr->asBinder().get());
-}
