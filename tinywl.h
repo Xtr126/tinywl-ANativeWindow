@@ -81,4 +81,4 @@ struct tinywl_toplevel {
 
 struct tinywl_server tinywl_init(unsigned int width, unsigned int height);
 
-void tinywl_run_loop(struct tinywl_server server);
+void tinywl_run_loop(struct tinywl_server* server);

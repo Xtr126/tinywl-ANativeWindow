@@ -512,6 +512,10 @@ static void output_frame(struct wl_listener *listener, void *data) {
 	struct wlr_scene_output *scene_output = wlr_scene_get_scene_output(
 		scene, output->wlr_output);
 	
+		assert(scene != NULL);
+		assert(output != NULL);
+		assert(output->wlr_output != NULL);
+		assert(scene_output != NULL);
 	/* Render the scene if needed and commit the output */
 	wlr_scene_output_commit(scene_output, NULL);
 	
@@ -1016,21 +1020,20 @@ struct tinywl_server tinywl_init(unsigned int width, unsigned int height) {
 	return server;
 }
 
-void tinywl_run_loop(struct tinywl_server server) {
+void tinywl_run_loop(struct tinywl_server* server) {
 	/* Run the Wayland event loop. This does not return until you exit the
 	 * compositor. Starting the backend rigged up all of the necessary event
 	 * loop configuration to listen to libinput events, DRM events, generate
 	 * frame events at the refresh rate, and so on. */
-	wl_display_run(server.wl_display);
-
+	wl_display_run(server->wl_display);
 	/* Once wl_display_run returns, we destroy all clients then shut down the
 	 * server. */
-	wl_display_destroy_clients(server.wl_display);
-	wlr_scene_node_destroy(&server.scene->tree.node);
-	wlr_xcursor_manager_destroy(server.cursor_mgr);
-	wlr_cursor_destroy(server.cursor);
-	wlr_allocator_destroy(server.allocator);
-	wlr_renderer_destroy(server.renderer);
-	wlr_backend_destroy(server.backend);
-	wl_display_destroy(server.wl_display);
+	wl_display_destroy_clients(server->wl_display);
+	wlr_scene_node_destroy(&server->scene->tree.node);
+	wlr_xcursor_manager_destroy(server->cursor_mgr);
+	wlr_cursor_destroy(server->cursor);
+	wlr_allocator_destroy(server->allocator);
+	wlr_renderer_destroy(server->renderer);
+	wlr_backend_destroy(server->backend);
+	wl_display_destroy(server->wl_display);
 }
