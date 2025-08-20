@@ -79,6 +79,6 @@ struct tinywl_toplevel {
 	BufferManager* buffer_presenter;
 };
 
-struct tinywl_server tinywl_init(unsigned int width, unsigned int height);
+int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* server);
 
 void tinywl_run_loop(struct tinywl_server* server);

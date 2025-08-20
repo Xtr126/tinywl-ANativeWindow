@@ -5,10 +5,10 @@
 #include "aidl/com/xtr/tinywl/ITinywlXdgTopLevel.h"
 #include "aidl/com/xtr/tinywl/XdgTopLevel.h"
 #include "android/binder_auto_utils.h"
-#include "android/binder_ibinder.h"
 #include "android/native_window.h"
 #include "buffer_presenter.h"
 #include <android/looper.h>
+#include <cassert>
 #include <memory>
 #include "ahb_wlr_allocator.h"
 
@@ -62,39 +62,28 @@ namespace tinywl {
     }
 
     ::ndk::ScopedAStatus startTinywl(const std::shared_ptr<ITinywlXdgTopLevel> &in_xdgTopLevelCallback) override {
-        Handler(mLooper).post([in_xdgTopLevelCallback, this] {
-          auto server = tinywl_init(1280, 720);
+        this->xdgTopLevelCallback = in_xdgTopLevelCallback;
+        server.callbacks.data = this;
 
-          server.callbacks.data = in_xdgTopLevelCallback->asBinder().get();
+        server.callbacks.xdg_toplevel_add = [](struct wlr_xdg_toplevel *xdg_toplevel, void* data) {
+          auto service = reinterpret_cast<tinywl::TinywlMainService *>(data);
+          service->xdgTopLevelCallback->addXdgTopLevel(XdgTopLevel_from_wlr_xdg_toplevel(xdg_toplevel));
+        };
 
-          server.callbacks.xdg_toplevel_add = [](struct wlr_xdg_toplevel *xdg_toplevel, void* data) {
-            const ::ndk::SpAIBinder spBinder((AIBinder*)data);
-            auto xdgTopLevelCallback = ITinywlXdgTopLevel::fromBinder(spBinder);
-            xdgTopLevelCallback->addXdgTopLevel(XdgTopLevel_from_wlr_xdg_toplevel(xdg_toplevel));
-          };
+        server.callbacks.xdg_toplevel_remove = [](struct wlr_xdg_toplevel *xdg_toplevel, void* data) {
+          auto service = reinterpret_cast<tinywl::TinywlMainService *>(data);
+          service->xdgTopLevelCallback->removeXdgTopLevel(XdgTopLevel_from_wlr_xdg_toplevel(xdg_toplevel));
+        };
 
-          server.callbacks.xdg_toplevel_remove = [](struct wlr_xdg_toplevel *xdg_toplevel, void* data) {
-            const ::ndk::SpAIBinder spBinder((AIBinder*)data);
-            auto xdgTopLevelCallback = ITinywlXdgTopLevel::fromBinder(spBinder);
-            xdgTopLevelCallback->removeXdgTopLevel(XdgTopLevel_from_wlr_xdg_toplevel(xdg_toplevel));
-          };
-          mInputService->setTinywlServer(&server);
-  
-          // Run on main thread
-          tinywl_run_loop(&server);
-        });
         return ::ndk::ScopedAStatus::ok();
-    }
-
-    void setLooper(ALooper* looper) {
-        mLooper = looper;
-        ALooper_acquire(mLooper);
     }
 
     const std::shared_ptr<TinywlInputService> mInputService = TinywlInputService_make();
 
+    struct tinywl_server server = {0};
+    std::shared_ptr<ITinywlXdgTopLevel> xdgTopLevelCallback;
+
   private:
-    ALooper* mLooper;  
   };  // class TinywlMainService
 
 }  // namespace tinywl
@@ -110,8 +99,13 @@ Java_com_xtr_tinywl_Tinywl_nativeGetInputServiceBinder(JNIEnv *env, jclass clazz
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_com_xtr_tinywl_Tinywl_nativeGetTinywlServiceBinder(JNIEnv *env, jclass clazz) {
-    ALooper* mainLooper = ALooper_forThread();
-    mService->setLooper(mainLooper);
-
     return AIBinder_toJavaBinder(env, mService->asBinder().get());
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_xtr_tinywl_Tinywl_runTinywlLoop(JNIEnv *env, jclass clazz) {
+  tinywl_init(1280, 720, &mService->server);
+  mService->mInputService->setTinywlServer(&mService->server);
+  tinywl_run_loop(&mService->server);
 }
