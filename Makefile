@@ -26,10 +26,10 @@ cros_gralloc_util.o: cros_gralloc_util.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
 input_service.o: TinywlInputService.cpp
-	$(CXX) -g $(CFLAGS) -fPIC -I. -I./aidl_source_output_dir/debug/out -DWLR_USE_UNSTABLE -o $@ -c $<
+	$(CXX) -g $(CFLAGS) -fPIC -I. -I./aidl_source_output_dir/debug/out -I./libbinder_ndk_cpp -DWLR_USE_UNSTABLE -o $@ -c $<
 
 main_service.o: TinywlMainService.cpp 
-	$(CXX) -g $(CFLAGS) -fPIC -I. -I./aidl_source_output_dir/debug/out -DWLR_USE_UNSTABLE -o $@ -c $<
+	$(CXX) -g $(CFLAGS) -fPIC -I. -I./aidl_source_output_dir/debug/out -I./libbinder_ndk_cpp -DWLR_USE_UNSTABLE -o $@ -c $<
 
 handler.o: Handler.cpp
 	$(CXX) -g -Werror $(CFLAGS) -fPIC -o $@ -c $<

@@ -5,6 +5,7 @@
         "-I/data/data/com.termux/files/usr/include/pixman-1",
         "-I${workspaceFolder}",
         "-I${workspaceFolder}/aidl_source_output_dir/debug/out",
+        "-I${workspaceFolder}/libbinder_ndk_cpp",
         "-DWLR_USE_UNSTABLE",
         "--target=x86_64-linux-android34"
     ]
