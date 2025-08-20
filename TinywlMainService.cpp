@@ -22,8 +22,8 @@ namespace tinywl {
 
   static XdgTopLevel XdgTopLevel_from_wlr_xdg_toplevel(struct wlr_xdg_toplevel *xdg_toplevel) {
     XdgTopLevel xdgTopLevel;
-    xdgTopLevel.appId = xdg_toplevel->app_id;
-    xdgTopLevel.title = xdg_toplevel->title;
+    if (xdg_toplevel->app_id != nullptr) xdgTopLevel.appId = xdg_toplevel->app_id;
+    if (xdg_toplevel->title != nullptr) xdgTopLevel.title = xdg_toplevel->title;
     xdgTopLevel.nativePtr = (long)xdg_toplevel;
     return xdgTopLevel;
   }
