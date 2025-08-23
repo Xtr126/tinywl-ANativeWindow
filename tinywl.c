@@ -627,6 +627,7 @@ static void xdg_toplevel_map(struct wl_listener *listener, void *data) {
 	wl_list_insert(&toplevel->server->toplevels, &toplevel->link);
 
 	focus_toplevel(toplevel, toplevel->xdg_toplevel->base->surface);
+	assert(toplevel->server->callbacks.xdg_toplevel_add != NULL);
 	toplevel->server->callbacks.xdg_toplevel_add(toplevel->xdg_toplevel, toplevel->server->callbacks.data);
 }
 
