@@ -623,12 +623,13 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 static void xdg_toplevel_map(struct wl_listener *listener, void *data) {
 	/* Called when the surface is mapped, or ready to display on-screen. */
 	struct tinywl_toplevel *toplevel = wl_container_of(listener, toplevel, map);
+	wlr_xdg_surface_get_geometry(toplevel->xdg_toplevel->base, &toplevel->geo_box);
 
 	wl_list_insert(&toplevel->server->toplevels, &toplevel->link);
 
 	focus_toplevel(toplevel, toplevel->xdg_toplevel->base->surface);
 	assert(toplevel->server->callbacks.xdg_toplevel_add != NULL);
-	toplevel->server->callbacks.xdg_toplevel_add(toplevel->xdg_toplevel, toplevel->server->callbacks.data);
+	toplevel->server->callbacks.xdg_toplevel_add(toplevel, toplevel->server->callbacks.data);
 }
 
 static void xdg_toplevel_unmap(struct wl_listener *listener, void *data) {
@@ -641,7 +642,7 @@ static void xdg_toplevel_unmap(struct wl_listener *listener, void *data) {
 	}
 
 	wl_list_remove(&toplevel->link);
-	toplevel->server->callbacks.xdg_toplevel_remove(toplevel->xdg_toplevel, toplevel->server->callbacks.data);
+	toplevel->server->callbacks.xdg_toplevel_remove(toplevel, toplevel->server->callbacks.data);
 }
 
 static void xdg_toplevel_commit(struct wl_listener *listener, void *data) {
@@ -650,8 +651,11 @@ static void xdg_toplevel_commit(struct wl_listener *listener, void *data) {
 
 	if (toplevel->xdg_toplevel->base->surface->buffer != NULL) {
 		if (toplevel->buffer_presenter != NULL) {
-			struct wlr_ahb_buffer *ahb_buffer = get_ahb_buffer_from_buffer(&toplevel->xdg_toplevel->base->surface->buffer->base);
-			buffer_presenter_send_buffer(toplevel->buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
+			struct wlr_buffer *wlr_buffer = &toplevel->xdg_toplevel->base->surface->buffer->base;
+			if (is_ahb_buffer(wlr_buffer)) {
+				struct wlr_ahb_buffer *ahb_buffer = get_ahb_buffer_from_buffer(wlr_buffer);
+				buffer_presenter_send_buffer(toplevel->buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
+			}
 		}
 	}
 

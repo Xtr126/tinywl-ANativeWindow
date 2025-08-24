@@ -13,7 +13,10 @@ struct wlr_ahb_buffer *get_ahb_buffer_from_buffer(struct wlr_buffer *wlr_buffer)
 	return buffer;
 }
 
-\
+bool is_ahb_buffer(struct wlr_buffer *wlr_buffer) {
+	return(wlr_buffer->impl == &buffer_impl);
+}
+
 static struct wlr_ahb_buffer *create_buffer(struct wlr_ahb_allocator *alloc,
 		int width, int height, const struct wlr_drm_format *format) {
 	assert(format->format == AHB_FORMAT_PREFERRED_DRM);

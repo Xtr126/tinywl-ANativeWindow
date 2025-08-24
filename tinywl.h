@@ -58,8 +58,8 @@ struct tinywl_server {
 
 	struct callbacks {
 		void *data;
-		void (*xdg_toplevel_add)(struct wlr_xdg_toplevel *xdg_toplevel, void *data);
-		void (*xdg_toplevel_remove)(struct wlr_xdg_toplevel *xdg_toplevel, void *data);
+		void (*xdg_toplevel_add)(struct tinywl_toplevel *xdg_toplevel, void *data);
+		void (*xdg_toplevel_remove)(struct tinywl_toplevel *xdg_toplevel, void *data);
 	} callbacks;
 };
 
@@ -68,6 +68,7 @@ struct tinywl_toplevel {
 	struct tinywl_server *server;
 	struct wlr_xdg_toplevel *xdg_toplevel;
 	struct wlr_scene_tree *scene_tree;
+	struct wlr_box geo_box;
 	struct wl_listener map;
 	struct wl_listener unmap;
 	struct wl_listener commit;

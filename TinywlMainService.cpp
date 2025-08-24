@@ -20,8 +20,30 @@ extern "C" {
 }
 
 
+template<typename T>
+std::vector<T*> stringToPointers(const std::string& string) {
+    std::vector<T*> pointers;
+    std::stringstream ss(string);
+    std::string segment;
 
-static void sendStartCommandForXdgTopLevel(struct wlr_xdg_toplevel *xdg_toplevel, std::string action) {
+    while (std::getline(ss, segment, ' ')) { // Read until the delimiter
+        uintptr_t ptrVal;
+        std::istringstream iss(segment);
+        iss >> std::hex >> ptrVal;
+        pointers.push_back(reinterpret_cast<T*>(ptrVal));
+    }
+    return pointers;
+}
+
+std::string pointersToString(const std::vector<void*>& pointers) {
+    std::ostringstream oss;
+    for (const void* ptr : pointers) {
+        oss << std::hex << std::showbase << reinterpret_cast<uintptr_t>(ptr) << " ";
+    }
+    return oss.str();
+}
+
+static void sendStartCommandForXdgTopLevel(struct tinywl_toplevel *toplevel, std::string action) {
     using namespace ::aidl::com::xtr::tinywl;
     // Construct the 'am' command string
     std::string command = "am start-service -n com.xtr.tinywl/.SurfaceService"; 
@@ -31,9 +53,9 @@ static void sendStartCommandForXdgTopLevel(struct wlr_xdg_toplevel *xdg_toplevel
     };
 
     addStringExtra(ITinywlXdgTopLevelCallback::ACTION, action);
-    addStringExtra(ITinywlXdgTopLevelCallback::NATIVE_PTR, std::to_string((long)xdg_toplevel));
-    if (xdg_toplevel->app_id != nullptr) addStringExtra(ITinywlXdgTopLevelCallback::APP_ID, xdg_toplevel->app_id);
-    if (xdg_toplevel->title != nullptr) addStringExtra(ITinywlXdgTopLevelCallback::TITLE, xdg_toplevel->title);
+    addStringExtra(ITinywlXdgTopLevelCallback::NATIVE_PTR, pointersToString({toplevel}));
+    if (toplevel->xdg_toplevel->app_id != nullptr) addStringExtra(ITinywlXdgTopLevelCallback::APP_ID, toplevel->xdg_toplevel->app_id);
+    if (toplevel->xdg_toplevel->title != nullptr) addStringExtra(ITinywlXdgTopLevelCallback::TITLE, toplevel->xdg_toplevel->title);
 
     std::cout << "Executing command: " << command << std::endl;
 
@@ -62,32 +84,33 @@ namespace tinywl {
   class TinywlMainService : public BnTinywlSurface {
   public:
     ::ndk::ScopedAStatus onSurfaceChanged(const XdgTopLevel &in_xdgToplevel) override {
-      ANativeWindow *window = in_xdgToplevel.surface.get();
-      struct tinywl_toplevel *toplevel = wl_container_of(in_xdgToplevel.nativePtr, toplevel, xdg_toplevel);
+      struct tinywl_toplevel *toplevel = stringToPointers<tinywl_toplevel>(in_xdgToplevel.nativePtr).front();
       buffer_presenter_destroy(toplevel->buffer_presenter);
-      toplevel->buffer_presenter = buffer_presenter_create(window);
-      // 	TinywlInputService_onWindowResize(ANativeWindow_getWidth(window), ANativeWindow_getHeight(window));
-      mInputService->width = ANativeWindow_getWidth(window);
-      return ::ndk::ScopedAStatus::ok();
+      return onSurfaceCreated(in_xdgToplevel);
     }
 
     ::ndk::ScopedAStatus onSurfaceCreated(const XdgTopLevel &in_xdgToplevel) override {
       ANativeWindow *window = in_xdgToplevel.surface.get();
-      struct tinywl_toplevel *toplevel = wl_container_of(in_xdgToplevel.nativePtr, toplevel, xdg_toplevel);
-      struct wlr_buffer buffer = toplevel->xdg_toplevel->base->surface->buffer->base;
+      struct tinywl_toplevel *toplevel = stringToPointers<tinywl_toplevel>(in_xdgToplevel.nativePtr).front();
 
-      wlr_log(WLR_DEBUG, "Setting buffers geometry for ANativeWindow to %dx%d", buffer.width, buffer.height);
-      int ret = ANativeWindow_setBuffersGeometry(window, buffer.width, buffer.height ,AHB_FORMAT_PREFERRED);
+      struct wlr_box* geo_box = &toplevel->geo_box;
+
+      wlr_log(WLR_DEBUG, "Setting buffers geometry for ANativeWindow to %dx%d", geo_box->width, geo_box->height);
+      int ret = ANativeWindow_setBuffersGeometry(window, geo_box->width, geo_box->height ,AHB_FORMAT_PREFERRED);
       if (ret != 0) {
         wlr_log(WLR_ERROR, "Failed to set buffers geometry: %s (%d)", strerror(-ret), -ret);
       }
       
       toplevel->buffer_presenter = buffer_presenter_create(window);
+
+      mInputService->width = ANativeWindow_getWidth(window);
+      mInputService->height = ANativeWindow_getWidth(window);
+
       return ::ndk::ScopedAStatus::ok();
     }
 
     ::ndk::ScopedAStatus onSurfaceDestroyed(const XdgTopLevel &in_xdgToplevel) override {
-      struct tinywl_toplevel *toplevel = wl_container_of(in_xdgToplevel.nativePtr, toplevel, xdg_toplevel);
+      struct tinywl_toplevel *toplevel = stringToPointers<tinywl_toplevel>(in_xdgToplevel.nativePtr).front();
       buffer_presenter_destroy(toplevel->buffer_presenter);
       return ::ndk::ScopedAStatus::ok();
     }
@@ -95,12 +118,12 @@ namespace tinywl {
     void registerXdgTopLevelCallback() {
         server.callbacks.data = nullptr;
 
-        server.callbacks.xdg_toplevel_add = [](struct wlr_xdg_toplevel *xdg_toplevel, void* data) {
-          sendStartCommandForXdgTopLevel(xdg_toplevel, ITinywlXdgTopLevelCallback::ACTION_ADD);
+        server.callbacks.xdg_toplevel_add = [](struct tinywl_toplevel *toplevel, void* data) {
+          sendStartCommandForXdgTopLevel(toplevel, ITinywlXdgTopLevelCallback::ACTION_ADD);
         };
 
-        server.callbacks.xdg_toplevel_remove = [](struct wlr_xdg_toplevel *xdg_toplevel, void* data) {
-          sendStartCommandForXdgTopLevel(xdg_toplevel, ITinywlXdgTopLevelCallback::ACTION_REMOVE);
+        server.callbacks.xdg_toplevel_remove = [](struct tinywl_toplevel *toplevel, void* data) {
+          sendStartCommandForXdgTopLevel(toplevel, ITinywlXdgTopLevelCallback::ACTION_REMOVE);
         };
     }
 

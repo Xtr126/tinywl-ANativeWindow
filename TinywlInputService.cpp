@@ -91,7 +91,7 @@ namespace tinywl {
     }
 
     ::ndk::ScopedAStatus TinywlInputService::onKeyEvent(const KeyEvent& in_event, bool* _aidl_return) {
-      std::cout << in_event.toString() << std::endl;
+      // std::cout << in_event.toString() << std::endl;
       
       if (in_event.source != Source::KEYBOARD) {
         return ::ndk::ScopedAStatus::ok();
@@ -120,7 +120,7 @@ namespace tinywl {
       return ::ndk::ScopedAStatus::ok();
     }
     ::ndk::ScopedAStatus TinywlInputService::onMotionEvent(const MotionEvent& in_event, bool* _aidl_return) {
-      std::cout << in_event.toString() << std::endl;
+      // std::cout << in_event.toString() << std::endl;
       
       if (in_event.source != Source::MOUSE) {
         return ::ndk::ScopedAStatus::ok();
@@ -129,15 +129,15 @@ namespace tinywl {
       switch (in_event.action) {
         case Action::BUTTON_PRESS:
         case Action::BUTTON_RELEASE:
-          sendPointerButtonEvent(in_event);
+          // sendPointerButtonEvent(in_event);
           break;
         case Action::MOVE:
         case Action::HOVER_ENTER:
         case Action::HOVER_EXIT:
-          sendPointerPosition(in_event);
+          // sendPointerPosition(in_event);
           break;
         case Action::SCROLL:
-          sendScrollEvent(in_event);
+          // sendScrollEvent(in_event);
           break;
         default:
             // Skip other actions
