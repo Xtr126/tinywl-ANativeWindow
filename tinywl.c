@@ -16,8 +16,8 @@
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "buffer_utils.h"
 #include "buffer_presenter.h"
+#include "buffer_utils.h"
 
 #include <android/native_window_jni.h>
 #include <wlr/backend/headless.h>
@@ -26,6 +26,7 @@
 #include "ahb_wlr_allocator.h"
 
 #include "tinywl.h"
+#include "client_renderer.h"
 
 struct tinywl_output {
 	struct wl_list link;
@@ -52,8 +53,6 @@ struct tinywl_keyboard {
 	struct wl_listener key;
 	struct wl_listener destroy;
 };
-
-struct wlr_output *output; 
 
 static void focus_toplevel(struct tinywl_toplevel *toplevel, struct wlr_surface *surface) {
 	/* Note: this function only deals with keyboard focus. */
@@ -629,6 +628,22 @@ static void xdg_toplevel_map(struct wl_listener *listener, void *data) {
 
 	focus_toplevel(toplevel, toplevel->xdg_toplevel->base->surface);
 	assert(toplevel->server->callbacks.xdg_toplevel_add != NULL);
+	
+	if (toplevel->android_buffer == NULL) {
+		assert(toplevel->xdg_toplevel->base->surface->buffer != NULL);
+
+		/* Get the format from the client buffer
+		struct wlr_buffer *client_buffer = &toplevel->xdg_toplevel->base->surface->buffer->base;
+		struct wlr_dmabuf_attributes attribs;
+		wlr_buffer_get_dmabuf(client_buffer, &attribs);
+		const struct wlr_drm_format format = {attribs.format};*/
+
+		const struct wlr_drm_format format = {AHB_FORMAT_PREFERRED_DRM};
+		// Create an AHardwareBuffer backed wlr_buffer for presenting
+		struct wlr_buffer* buffer = wlr_allocator_create_buffer(toplevel->server->allocator, toplevel->geo_box.width, toplevel->geo_box.height, &format);
+		toplevel->android_buffer = get_ahb_buffer_from_buffer(buffer);
+	}
+
 	toplevel->server->callbacks.xdg_toplevel_add(toplevel, toplevel->server->callbacks.data);
 }
 
@@ -642,7 +657,13 @@ static void xdg_toplevel_unmap(struct wl_listener *listener, void *data) {
 	}
 
 	wl_list_remove(&toplevel->link);
+
 	toplevel->server->callbacks.xdg_toplevel_remove(toplevel, toplevel->server->callbacks.data);
+
+	if (toplevel->android_buffer != NULL) {
+		wlr_buffer_drop(&toplevel->android_buffer->base);
+	}
+
 }
 
 static void xdg_toplevel_commit(struct wl_listener *listener, void *data) {
@@ -651,11 +672,10 @@ static void xdg_toplevel_commit(struct wl_listener *listener, void *data) {
 
 	if (toplevel->xdg_toplevel->base->surface->buffer != NULL) {
 		if (toplevel->buffer_presenter != NULL) {
-			struct wlr_buffer *wlr_buffer = &toplevel->xdg_toplevel->base->surface->buffer->base;
-			if (is_ahb_buffer(wlr_buffer)) {
-				struct wlr_ahb_buffer *ahb_buffer = get_ahb_buffer_from_buffer(wlr_buffer);
-				buffer_presenter_send_buffer(toplevel->buffer_presenter, ahb_buffer->ahb, -1, NULL, NULL);
-			}
+			struct wlr_buffer *src_buffer = &toplevel->xdg_toplevel->base->surface->buffer->base;
+			struct wlr_buffer *dst_buffer = &toplevel->android_buffer->base;
+			render_client_buffer_to_buffer(toplevel->server->renderer, src_buffer, dst_buffer);
+			buffer_presenter_send_buffer(toplevel->buffer_presenter, toplevel->android_buffer->ahb, -1, NULL, NULL);
 		}
 	}
 
@@ -872,7 +892,7 @@ int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* s
 		return -1;
 	}
 
-	output = wlr_headless_add_output(server->backend, width, height);
+	wlr_headless_add_output(server->backend, width, height);
 
 	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
 	 * can also specify a renderer using the WLR_RENDERER env var.

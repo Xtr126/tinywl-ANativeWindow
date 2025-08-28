@@ -78,6 +78,7 @@ struct tinywl_toplevel {
 	struct wl_listener request_maximize;
 	struct wl_listener request_fullscreen;
 	BufferManager* buffer_presenter;
+	struct wlr_ahb_buffer *android_buffer;
 };
 
 int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* server);

@@ -40,16 +40,19 @@ buffer_presenter.o: buffer_presenter.cpp
 ahb_wlr_allocator.o: ahb_wlr_allocator.c
 	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
 
+client_renderer.o: client_renderer.c
+	$(CC) -g -Werror $(CFLAGS) -fPIC -I. -DWLR_USE_UNSTABLE -o $@ -c $<
+
 ABI := $(shell getprop ro.product.cpu.abi | tr -d '\r')
 APK_PATH := $(shell pm path com.xtr.tinywl 2>/dev/null | cut -d ':' -f 2 | tr -d '\r')
 APK_DIR := $(shell dirname $(APK_PATH))
 NATIVE_LIB_PATH=$(APK_DIR)/lib/$(ABI)
 
-libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o cros_gralloc_util.o input_service.o ahb_wlr_allocator.o main_service.o handler.o
+libtinywl.so: tinywl.o buffer_utils.o buffer_presenter.o cros_gralloc_util.o input_service.o ahb_wlr_allocator.o main_service.o handler.o client_renderer.o
 	$(CC) $^ -g -Werror $(CFLAGS) $(LDFLAGS) $(LIBS) -L$(NATIVE_LIB_PATH) -fPIC -shared -o $@
 
 clean:
-	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o cros_gralloc_util.o input_service.o main_service.o ahb_wlr_allocator.o main_service.o handler.o xdg-shell-protocol.h
+	rm -f libtinywl.so tinywl.o buffer_utils.o buffer_presenter.o cros_gralloc_util.o input_service.o main_service.o ahb_wlr_allocator.o main_service.o handler.o client_renderer.o xdg-shell-protocol.h
 
 .DEFAULT_GOAL=libtinywl.so
 .PHONY: clean
