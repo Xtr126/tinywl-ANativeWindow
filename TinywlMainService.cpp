@@ -10,7 +10,6 @@
 #include <android/looper.h>
 #include <assert.h>
 #include <cassert>
-#include <cstddef>
 #include <memory>
 #include <string>
 #include "ahb_wlr_allocator.h"
