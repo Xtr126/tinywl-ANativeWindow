@@ -1,7 +1,6 @@
 #include <android/hardware_buffer.h>
 #include <string.h>
 #include <unistd.h>
-#include "cutils/native_handle.h"
 #include "drm_fourcc.h"
 #include "vndk/hardware_buffer.h"
 #include "buffer_utils.h"
@@ -78,19 +77,26 @@ void ANativeWindow_sendWlrBuffer(struct wlr_buffer *wlr_buffer, BufferManager *b
         .height = static_cast<uint32_t>(wlr_buffer->height),
         .layers = 1,
         .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
-        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE,
+        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER,
     };
 
-    native_handle_t *handle = native_handle_create(1, 4);
-    handle->data[0] = fcntl(dmabuf_attrs.fd[0], F_DUPFD_CLOEXEC, 0); // DMA-BUF FD
-    handle->data[1] = dmabuf_attrs.stride[0];               // Buffer stride
-    handle->data[2] = 0;                                     // Offset
-    handle->data[3] = (uint32_t)dmabuf_attrs.modifier;   // Modifier low
-    handle->data[4] = dmabuf_attrs.modifier >> 32;       // Modifier high
+    struct cros_gralloc_handle handle = {
+        .width = static_cast<uint32_t>(dmabuf_attrs.width),
+        .height = static_cast<uint32_t>(dmabuf_attrs.height),
+        .format = dmabuf_attrs.format,
+        .format_modifier = dmabuf_attrs.modifier,
+        .num_planes = static_cast<uint32_t>(dmabuf_attrs.n_planes),
+    };    
+ 
+    for (int i = 0; i < dmabuf_attrs.n_planes; i++) {
+        handle.fds[i] = fcntl(dmabuf_attrs.fd[i], F_DUPFD_CLOEXEC, 0);;
+        handle.strides[i] = dmabuf_attrs.stride[i];
+        handle.offsets[i] = dmabuf_attrs.offset[i];
+    }
 
     AHardwareBuffer *ahb;
     int ret = AHardwareBuffer_createFromHandle(
-        &ahb_desc, handle, AHARDWAREBUFFER_CREATE_FROM_HANDLE_METHOD_REGISTER, &ahb
+        &ahb_desc, &handle, AHARDWAREBUFFER_CREATE_FROM_HANDLE_METHOD_REGISTER, &ahb
     );
 
     if (ret != 0) {
