@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out/ndk -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out/ndk -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/debug/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl17469262617190849887.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl/com/xtr/tinywl/ITinywlMain.aidl
+ * Using: /home/hp/Android/Sdk/build-tools/35.0.0/aidl --lang=ndk -o/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out/ndk -h/home/hp/Desktop/wlroots-android-bridge/tinywl/build/generated/aidl_source_output_dir/debug/out/ndk -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/debug/aidl -I/home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/cpp/aidl -d/tmp/aidl2689645033274289371.d /home/hp/Desktop/wlroots-android-bridge/tinywl/src/main/aidl/com/xtr/tinywl/ITinywlMain.aidl
  */
 #pragma once
 
@@ -32,8 +32,8 @@ public:
   explicit ITinywlMainDelegator(const std::shared_ptr<ITinywlMain> &impl) : _impl(impl) {
   }
 
-  ::ndk::ScopedAStatus registerXdgTopLevelCallback() override {
-    return _impl->registerXdgTopLevelCallback();
+  ::ndk::ScopedAStatus registerXdgTopLevelCallback(const std::shared_ptr<::aidl::com::xtr::tinywl::ITinywlXdgTopLevelCallback>& in_xdgTopLevelCallback) override {
+    return _impl->registerXdgTopLevelCallback(in_xdgTopLevelCallback);
   }
 protected:
 private:
