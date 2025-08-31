@@ -2,6 +2,7 @@
 #include <android/binder_ibinder_jni.h>
 #include "TinywlInputService.h"
 #include "aidl/com/xtr/tinywl/TinywlXdgTopLevelCallback.h"
+#include "aidl/com/xtr/tinywl/WlrBox.h"
 #include "aidl/com/xtr/tinywl/XdgTopLevel.h"
 #include "android/binder_auto_utils.h"
 #include "android/binder_interface_utils.h"
@@ -10,62 +11,13 @@
 #include <android/looper.h>
 #include <assert.h>
 #include <cassert>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include "ahb_wlr_allocator.h"
 
 extern "C" {
   #include <wlr/util/log.h>
-}
-
-
-template<typename T>
-std::vector<T*> stringToPointers(const std::string& string) {
-    std::vector<T*> pointers;
-    std::stringstream ss(string);
-    std::string segment;
-
-    while (std::getline(ss, segment, ' ')) { // Read until the delimiter
-        uintptr_t ptrVal;
-        std::istringstream iss(segment);
-        iss >> std::hex >> ptrVal;
-        pointers.push_back(reinterpret_cast<T*>(ptrVal));
-    }
-    return pointers;
-}
-
-std::string pointersToString(const std::vector<void*>& pointers) {
-    std::ostringstream oss;
-    for (const void* ptr : pointers) {
-        oss << std::hex << std::showbase << reinterpret_cast<uintptr_t>(ptr) << " ";
-    }
-    return oss.str();
-}
-
-static void sendStartCommandForXdgTopLevel(struct tinywl_toplevel *toplevel, std::string action) {
-    using namespace ::aidl::com::xtr::tinywl;
-    // Construct the 'am' command string
-    std::string command = "am start-service -n com.xtr.tinywl/.SurfaceService"; 
-
-    auto addStringExtra = [&command](std::string extraKey, std::string extra) {
-      command+= " --es " + extraKey + " '" + extra + "'";
-    };
-
-    addStringExtra(ITinywlXdgTopLevelCallback::ACTION, action);
-    addStringExtra(ITinywlXdgTopLevelCallback::NATIVE_PTR, pointersToString({toplevel}));
-    if (toplevel->xdg_toplevel->app_id != nullptr) addStringExtra(ITinywlXdgTopLevelCallback::APP_ID, toplevel->xdg_toplevel->app_id);
-    if (toplevel->xdg_toplevel->title != nullptr) addStringExtra(ITinywlXdgTopLevelCallback::TITLE, toplevel->xdg_toplevel->title);
-
-    std::cout << "Executing command: " << command << std::endl;
-
-    // Use std::system to execute the command in the shell
-    int result = std::system(command.c_str());
-
-    if (result == 0) {
-        std::cout << "Successfully started the service." << std::endl;
-    } else {
-        std::cerr << "Failed to start the service. Error code: " << result << std::endl;
-    }
 }
 
 namespace tinywl {
@@ -80,17 +32,26 @@ namespace tinywl {
     return xdgTopLevel;
   }
 
+  static WlrBox WlrBox_from_wlr_box(struct wlr_box *wlr_box) {
+    WlrBox wlrBox;
+    wlrBox.x = wlr_box->x;
+    wlrBox.y = wlr_box->y;
+    wlrBox.width = wlr_box->width;
+    wlrBox.height = wlr_box->height;
+    return wlrBox;
+  }
+
   class TinywlMainService : public BnTinywlSurface {
   public:
     ::ndk::ScopedAStatus onSurfaceChanged(const XdgTopLevel &in_xdgToplevel) override {
-      struct tinywl_toplevel *toplevel = stringToPointers<tinywl_toplevel>(in_xdgToplevel.nativePtr).front();
+      struct tinywl_toplevel *toplevel = reinterpret_cast<tinywl_toplevel *>(in_xdgToplevel.nativePtr);
       buffer_presenter_destroy(toplevel->buffer_presenter);
       return onSurfaceCreated(in_xdgToplevel);
     }
 
     ::ndk::ScopedAStatus onSurfaceCreated(const XdgTopLevel &in_xdgToplevel) override {
       ANativeWindow *window = in_xdgToplevel.surface.get();
-      struct tinywl_toplevel *toplevel = stringToPointers<tinywl_toplevel>(in_xdgToplevel.nativePtr).front();
+      struct tinywl_toplevel *toplevel = reinterpret_cast<tinywl_toplevel *>(in_xdgToplevel.nativePtr);
 
       struct wlr_box* geo_box = &toplevel->geo_box;
 
@@ -109,24 +70,29 @@ namespace tinywl {
     }
 
     ::ndk::ScopedAStatus onSurfaceDestroyed(const XdgTopLevel &in_xdgToplevel) override {
-      struct tinywl_toplevel *toplevel = stringToPointers<tinywl_toplevel>(in_xdgToplevel.nativePtr).front();
+      struct tinywl_toplevel *toplevel = reinterpret_cast<tinywl_toplevel *>(in_xdgToplevel.nativePtr);
       buffer_presenter_destroy(toplevel->buffer_presenter);
       return ::ndk::ScopedAStatus::ok();
     }
 
     void registerXdgTopLevelCallback() {
-        server.callbacks.data = nullptr;
+        server.callbacks.data = this;
 
         server.callbacks.xdg_toplevel_add = [](struct tinywl_toplevel *toplevel, void* data) {
-          sendStartCommandForXdgTopLevel(toplevel, ITinywlXdgTopLevelCallback::ACTION_ADD);
+          std::string appId;
+          std::string title;
+          if (toplevel->xdg_toplevel->app_id != NULL) appId = toplevel->xdg_toplevel->app_id; 
+          if (toplevel->xdg_toplevel->title != NULL) title = toplevel->xdg_toplevel->title; 
+          reinterpret_cast<TinywlMainService *>(data)->mCallback->addXdgTopLevel(appId, title, (long)toplevel, WlrBox_from_wlr_box(&toplevel->geo_box));
         };
 
         server.callbacks.xdg_toplevel_remove = [](struct tinywl_toplevel *toplevel, void* data) {
-          sendStartCommandForXdgTopLevel(toplevel, ITinywlXdgTopLevelCallback::ACTION_REMOVE);
+          reinterpret_cast<TinywlMainService *>(data)->mCallback->removeXdgTopLevel(toplevel->xdg_toplevel->app_id, toplevel->xdg_toplevel->title, (long)toplevel);
         };
     }
 
     const std::shared_ptr<TinywlInputService> mInputService = TinywlInputService_make();
+    std::shared_ptr<ITinywlXdgTopLevelCallback> mCallback;
 
     struct tinywl_server server = {0};
 
@@ -135,29 +101,33 @@ namespace tinywl {
 
 }  // namespace tinywl
 
-static auto mService = ndk::SharedRefBase::make<tinywl::TinywlMainService>();
+static auto gService = ndk::SharedRefBase::make<tinywl::TinywlMainService>();
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_xtr_tinywl_Tinywl_runTinywlLoop(JNIEnv *env, jclass clazz) {
-  tinywl_init(1280, 720, &mService->server);
-  mService->mInputService->setTinywlServer(&mService->server);
-  tinywl_run_loop(&mService->server);
+  tinywl_init(1280, 720, &gService->server);
+  gService->mInputService->setTinywlServer(&gService->server);
+  tinywl_run_loop(&gService->server);
 }
 
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_com_xtr_tinywl_Tinywl_nativeGetTinywlInputServiceBinder(JNIEnv *env, jclass clazz) {
-    return AIBinder_toJavaBinder(env, mService->mInputService->asBinder().get());
+    return AIBinder_toJavaBinder(env, gService->mInputService->asBinder().get());
 }
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_com_xtr_tinywl_Tinywl_nativeGetTinywlSurfaceBinder(JNIEnv *env, jclass clazz) {
-    return AIBinder_toJavaBinder(env, mService->asBinder().get());
+    return AIBinder_toJavaBinder(env, gService->asBinder().get());
 }
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_xtr_tinywl_Tinywl_nativeRegisterXdgTopLevelCallback(JNIEnv *env, jclass clazz) {
-    mService->registerXdgTopLevelCallback();
+Java_com_xtr_tinywl_Tinywl_nativeRegisterXdgTopLevelCallback(JNIEnv *env, jclass clazz,
+                                                             jobject binder) {
+    AIBinder* pBinder = AIBinder_fromJavaBinder(env, binder);
+    const ::ndk::SpAIBinder spBinder(pBinder);
+    gService->mCallback = aidl::com::xtr::tinywl::ITinywlXdgTopLevelCallback::fromBinder(spBinder);
+    gService->registerXdgTopLevelCallback();
     wlr_log(WLR_INFO, "Registered callback");
 }
