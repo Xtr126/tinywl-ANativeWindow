@@ -24,12 +24,11 @@ extern float PointerCoords_getAxisValue(const aidl::android::hardware::input::co
 
 namespace tinywl {
 
-    void TinywlInputService::sendPointerButtonEvent(const MotionEvent& in_event) {
+    void TinywlInputService::sendPointerButtonEvent(const MotionEvent& in_event, struct tinywl_toplevel *toplevel) {
          
       struct wlr_pointer_button_event wlr_event = {
           .pointer = &pointer,
           .time_msec = (uint32_t)in_event.eventTime,
-          .button = AKEYCODE_BUTTON_1,
           .state = WL_POINTER_BUTTON_STATE_PRESSED,
       };
 
@@ -55,26 +54,39 @@ namespace tinywl {
             return;
       }
 
-      wl_signal_emit_mutable(&pointer.events.button, &wlr_event);
-      wl_signal_emit_mutable(&pointer.events.frame, &pointer);
+      struct wlr_surface *surface;
+      if (toplevel) surface = toplevel->xdg_toplevel->base->surface;
+
+      if (surface) {
+        struct wl_client *wl_client = wl_resource_get_client(surface->resource);
+        server->seat->pointer_state.focused_surface = surface;
+        server->seat->pointer_state.focused_client = wlr_seat_client_for_wl_client(server->seat, wl_client);
+        wlr_seat_pointer_send_button(server->seat, wlr_event.time_msec, wlr_event.button, wlr_event.state);
+      }
     }
 
-    void TinywlInputService::sendPointerPosition(const MotionEvent& in_event) {
+    void TinywlInputService::sendPointerPosition(const MotionEvent& in_event, struct tinywl_toplevel *toplevel) {
       float x = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::X));
       float y = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::Y));
+      struct wlr_seat_client *client = NULL;
+      struct wlr_surface *surface;
+      if (toplevel) surface = toplevel->xdg_toplevel->base->surface;
 
-      struct wlr_pointer_motion_absolute_event wlr_event = {
-        .pointer = &pointer,
-        .time_msec = static_cast<uint32_t>(in_event.eventTime),
-        .x = x / width,
-        .y = y / height,
-      };
+      if (surface) {
+        struct wl_client *wl_client = wl_resource_get_client(surface->resource);
+        client = wlr_seat_client_for_wl_client(server->seat, wl_client);
+        struct wl_resource *resource;
+        wl_resource_for_each(resource, &client->pointers) {
+          if (wlr_seat_client_from_pointer_resource(resource) == NULL) {
+            continue;
+          }
 
-      wl_signal_emit_mutable(&pointer.events.motion_absolute, &wlr_event);
-      wl_signal_emit_mutable(&pointer.events.frame, &pointer);
+          wl_pointer_send_motion(resource, in_event.eventTime, x, y);
+        }
+      }
     }
 
-    void TinywlInputService::sendScrollEvent(const MotionEvent& in_event) {
+    void TinywlInputService::sendScrollEvent(const MotionEvent& in_event, struct tinywl_toplevel *toplevel) {
       float delta = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::Y));
       struct wlr_pointer_axis_event wlr_event = {
         .pointer = &pointer,
@@ -84,13 +96,16 @@ namespace tinywl {
         .delta = delta,
         .delta_discrete = static_cast<int32_t>(delta * WLR_POINTER_AXIS_DISCRETE_STEP),
       };
-      
-      wl_signal_emit_mutable(&pointer.events.axis, &wlr_event);
-      wl_signal_emit_mutable(&pointer.events.frame, &pointer);
-
+      struct wlr_surface *surface = toplevel->xdg_toplevel->base->surface;
+      if (surface) {
+        struct wl_client *wl_client = wl_resource_get_client(surface->resource);
+        server->seat->pointer_state.focused_surface = surface;
+        server->seat->pointer_state.focused_client = wlr_seat_client_for_wl_client(server->seat, wl_client);
+        wlr_seat_pointer_send_axis(server->seat, wlr_event.time_msec, wlr_event.orientation, wlr_event.delta, wlr_event.delta_discrete, wlr_event.source, wlr_event.relative_direction);
+      }
     }
 
-    ::ndk::ScopedAStatus TinywlInputService::onKeyEvent(const KeyEvent& in_event, bool* _aidl_return) {
+    ::ndk::ScopedAStatus TinywlInputService::onKeyEvent(const KeyEvent& in_event, long in_nativePtr, bool* _aidl_return) {
       // std::cout << in_event.toString() << std::endl;
       
       if (in_event.source != Source::KEYBOARD) {
@@ -119,7 +134,7 @@ namespace tinywl {
       *_aidl_return = true;
       return ::ndk::ScopedAStatus::ok();
     }
-    ::ndk::ScopedAStatus TinywlInputService::onMotionEvent(const MotionEvent& in_event, bool* _aidl_return) {
+    ::ndk::ScopedAStatus TinywlInputService::onMotionEvent(const MotionEvent& in_event, long in_nativePtr, bool* _aidl_return) {
       // std::cout << in_event.toString() << std::endl;
       
       if (in_event.source != Source::MOUSE) {
@@ -129,15 +144,15 @@ namespace tinywl {
       switch (in_event.action) {
         case Action::BUTTON_PRESS:
         case Action::BUTTON_RELEASE:
-          // sendPointerButtonEvent(in_event);
+          sendPointerButtonEvent(in_event, reinterpret_cast<struct tinywl_toplevel*>(in_nativePtr));
           break;
         case Action::MOVE:
         case Action::HOVER_ENTER:
         case Action::HOVER_EXIT:
-          // sendPointerPosition(in_event);
+          sendPointerPosition(in_event, reinterpret_cast<struct tinywl_toplevel*>(in_nativePtr));
           break;
         case Action::SCROLL:
-          // sendScrollEvent(in_event);
+          sendScrollEvent(in_event, reinterpret_cast<struct tinywl_toplevel*>(in_nativePtr));
           break;
         default:
             // Skip other actions
