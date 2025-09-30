@@ -55,7 +55,8 @@ namespace tinywl {
       }
 
       struct wlr_surface *surface;
-      if (toplevel) surface = toplevel->xdg_toplevel->base->surface;
+      if (toplevel && toplevel->xdg_toplevel)
+        surface = toplevel->xdg_toplevel->base->surface;
 
       if (surface) {
         struct wl_client *wl_client = wl_resource_get_client(surface->resource);
@@ -70,7 +71,8 @@ namespace tinywl {
       float y = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::Y));
       struct wlr_seat_client *client = NULL;
       struct wlr_surface *surface;
-      if (toplevel) surface = toplevel->xdg_toplevel->base->surface;
+      if (toplevel && toplevel->xdg_toplevel)
+        surface = toplevel->xdg_toplevel->base->surface;
 
       if (surface) {
         struct wl_client *wl_client = wl_resource_get_client(surface->resource);
@@ -96,7 +98,10 @@ namespace tinywl {
         .delta = delta,
         .delta_discrete = static_cast<int32_t>(delta * WLR_POINTER_AXIS_DISCRETE_STEP),
       };
-      struct wlr_surface *surface = toplevel->xdg_toplevel->base->surface;
+      struct wlr_surface *surface;
+      if (toplevel && toplevel->xdg_toplevel)
+        surface = toplevel->xdg_toplevel->base->surface;
+
       if (surface) {
         struct wl_client *wl_client = wl_resource_get_client(surface->resource);
         server->seat->pointer_state.focused_surface = surface;
