@@ -72,6 +72,7 @@ namespace tinywl {
     ::ndk::ScopedAStatus onSurfaceDestroyed(const XdgTopLevel &in_xdgToplevel) override {
       struct tinywl_toplevel *toplevel = reinterpret_cast<tinywl_toplevel *>(in_xdgToplevel.nativePtr);
       buffer_presenter_destroy(toplevel->buffer_presenter);
+      toplevel->buffer_presenter = nullptr;
       return ::ndk::ScopedAStatus::ok();
     }
 
