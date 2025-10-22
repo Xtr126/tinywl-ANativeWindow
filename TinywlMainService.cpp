@@ -88,11 +88,11 @@ namespace tinywl {
         };
 
         server.callbacks.xdg_toplevel_remove = [](struct tinywl_toplevel *toplevel, void* data) {
-          reinterpret_cast<TinywlMainService *>(data)->mCallback->removeXdgTopLevel(toplevel->xdg_toplevel->app_id, toplevel->xdg_toplevel->title, (long)toplevel);
+          // reinterpret_cast<TinywlMainService *>(data)->mCallback->removeXdgTopLevel(toplevel->xdg_toplevel->app_id, toplevel->xdg_toplevel->title, (long)toplevel);
         };
     }
 
-    const std::shared_ptr<TinywlInputService> mInputService = TinywlInputService_make();
+    const std::shared_ptr<TinywlInputService> mInputService = ndk::SharedRefBase::make<tinywl::TinywlInputService>();
     std::shared_ptr<ITinywlXdgTopLevelCallback> mCallback;
 
     struct tinywl_server server = {0};
@@ -109,6 +109,16 @@ JNIEXPORT void JNICALL
 Java_com_xtr_tinywl_Tinywl_runTinywlLoop(JNIEnv *env, jclass clazz) {
   tinywl_init(1280, 720, &gService->server);
   gService->mInputService->setTinywlServer(&gService->server);
+  
+  /* Handle event loop destroy */
+  gService->mInputService->event_loop_destroy.notify = [](struct wl_listener *listener, void *data) {
+    gService->mInputService->closeFdsAndRemoveEventSources();
+  };
+  
+  struct wl_event_loop *loop = wl_display_get_event_loop(gService->server.wl_display);
+  wl_event_loop_add_destroy_listener(loop, &gService->mInputService->event_loop_destroy);
+
+  // Run loop
   tinywl_run_loop(&gService->server);
 }
 
