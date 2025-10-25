@@ -5,4 +5,4 @@ APK_DIR=$(dirname "$APK_PATH")
 NATIVE_LIB_PATH="$APK_DIR/lib/$ABI"
 
 /system/bin/app_process -Djava.library.path=./:/system/lib64/:"$NATIVE_LIB_PATH" \
-                        -Djava.class.path="$APK_PATH" / com.xtr.tinywl.Tinywl
+                        -Djava.class.path="$APK_PATH" / com.xtr.tinywl.Tinywl "$@"

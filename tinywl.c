@@ -875,9 +875,7 @@ static void server_new_xdg_popup(struct wl_listener *listener, void *data) {
 	wl_signal_add(&xdg_popup->events.destroy, &popup->destroy);
 }
 
-int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* server) {
-	char *startup_cmd = NULL;
-	
+int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* server, const char* startup_cmd) {	
 	wlr_log_init(WLR_DEBUG, NULL);
 	/* The Wayland display is managed by libwayland. It handles accepting
 	 * clients from the Unix socket, manging Wayland globals, and so on. */
@@ -1027,10 +1025,9 @@ int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* s
 		wl_display_destroy(server->wl_display);
 		return -1;
 	}
-
+	setenv("WAYLAND_DISPLAY", socket, true);
 	/* Set the WAYLAND_DISPLAY environment variable to our socket and run the
 	 * startup command if requested. */
-	setenv("WAYLAND_DISPLAY", socket, true);
 	if (startup_cmd) {
 		if (fork() == 0) {
 			execl("/bin/sh", "/bin/sh", "-c", startup_cmd, (void *)NULL);
@@ -1041,16 +1038,19 @@ int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* s
 }
 
 void tinywl_run_loop(struct tinywl_server* server) {
+
+	/* Run the Wayland event loop. This does not return until you exit the
+	* compositor. Starting the backend rigged up all of the necessary event
+	* loop configuration to listen to libinput events, DRM events, generate
+	* frame events at the refresh rate, and so on. */
 	wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s",
 		getenv("WAYLAND_DISPLAY"));
-	/* Run the Wayland event loop. This does not return until you exit the
-	 * compositor. Starting the backend rigged up all of the necessary event
-	 * loop configuration to listen to libinput events, DRM events, generate
-	 * frame events at the refresh rate, and so on. */
 	wl_display_run(server->wl_display);
+
 	/* Once wl_display_run returns, we destroy all clients then shut down the
 	 * server-> */
 	wl_display_destroy_clients(server->wl_display);
+
 	wlr_scene_node_destroy(&server->scene->tree.node);
 	wlr_xcursor_manager_destroy(server->cursor_mgr);
 	wlr_cursor_destroy(server->cursor);

@@ -81,6 +81,6 @@ struct tinywl_toplevel {
 	struct wlr_ahb_buffer *android_buffer;
 };
 
-int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* server);
+int tinywl_init(unsigned int width, unsigned int height, struct tinywl_server* server, const char* startup_cmd);
 
 void tinywl_run_loop(struct tinywl_server* server);

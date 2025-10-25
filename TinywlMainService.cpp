@@ -106,8 +106,43 @@ static auto gService = ndk::SharedRefBase::make<tinywl::TinywlMainService>();
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_xtr_tinywl_Tinywl_runTinywlLoop(JNIEnv *env, jclass clazz) {
-  tinywl_init(1280, 720, &gService->server);
+Java_com_xtr_tinywl_Tinywl_runTinywlLoop(JNIEnv *env, jclass clazz, jobjectArray args) {
+  int argc = env->GetArrayLength(args);
+
+  std::vector<std::string> argStrings;
+  argStrings.reserve(argc);
+
+  for (int i = 0; i < argc; i++) {
+      jstring jstr = (jstring)env->GetObjectArrayElement(args, i);
+      const char* utf = env->GetStringUTFChars(jstr, nullptr);
+      argStrings.emplace_back(utf);
+      env->ReleaseStringUTFChars(jstr, utf);
+      env->DeleteLocalRef(jstr);
+  }
+
+  const char* startup_cmd = nullptr;
+
+  for (int i = 0; i < argc; i++) {
+      const std::string& arg = argStrings[i];
+
+      if (arg == "-s") {
+          if (i + 1 < argc) {
+              startup_cmd = argStrings[++i].c_str();
+          } else {
+              std::cout << "Error: -s requires an argument\n";
+              std::cout << "Usage: sh start.sh [-s startup command]\n";
+              return;
+          }
+      } else if (arg == "-h") {
+          std::cout << "Usage: sh start.sh [-s startup command]\n";
+          return;
+      } else {
+          std::cout << "Usage: sh start.sh [-s startup command]\n";
+          return;
+      }
+  }
+
+  tinywl_init(1280, 720, &gService->server, startup_cmd);
   gService->mInputService->setTinywlServer(&gService->server);
   
   /* Handle event loop destroy */
