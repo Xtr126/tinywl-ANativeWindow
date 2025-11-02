@@ -29,20 +29,11 @@ namespace tinywl {
         .name = "tinywl-keyboard",
     };
 
-    static int64_t timespec_to_msec(const struct timespec *a) {
-      return (int64_t)a->tv_sec * 1000 + a->tv_nsec / 1000000;
-    }
-
-    static int64_t get_current_time_msec(void) {
-      struct timespec now;
-      clock_gettime(CLOCK_MONOTONIC, &now);
-      return timespec_to_msec(&now);
-    }
 
     void TinywlInputService::sendPointerButtonEvent(const MotionEvent& in_event, struct tinywl_toplevel *toplevel) {
       struct wlr_pointer_button_event wlr_event = {
           .pointer = &pointer,
-          .time_msec = static_cast<uint32_t>(get_current_time_msec()),
+          .time_msec = static_cast<uint32_t>(in_event.eventTime),
           .state = WL_POINTER_BUTTON_STATE_PRESSED,
       };
 
@@ -98,7 +89,7 @@ namespace tinywl {
             continue;
           }
 
-          wl_pointer_send_motion(resource, get_current_time_msec(), x, y);
+          wl_pointer_send_motion(resource, in_event.eventTime, x, y);
           wl_signal_emit_mutable(&pointer.events.frame, &pointer);
         }
       }
@@ -108,7 +99,7 @@ namespace tinywl {
       float delta = PointerCoords_getAxisValue(in_event.pointerCoords.front(), static_cast<int32_t>(Axis::Y));
       struct wlr_pointer_axis_event wlr_event = {
         .pointer = &pointer,
-        .time_msec = static_cast<uint32_t>(get_current_time_msec()),
+        .time_msec = static_cast<uint32_t>(in_event.eventTime),
         .source = WL_POINTER_AXIS_SOURCE_WHEEL,
         .orientation = WL_POINTER_AXIS_VERTICAL_SCROLL,
         .delta = delta,
