@@ -80,15 +80,21 @@ namespace tinywl {
         server.callbacks.data = this;
 
         server.callbacks.xdg_toplevel_add = [](struct tinywl_toplevel *toplevel, void* data) {
+          auto thiz = reinterpret_cast<TinywlMainService *>(data);
           std::string appId;
           std::string title;
           if (toplevel->xdg_toplevel->app_id != NULL) appId = toplevel->xdg_toplevel->app_id; 
           if (toplevel->xdg_toplevel->title != NULL) title = toplevel->xdg_toplevel->title; 
-          reinterpret_cast<TinywlMainService *>(data)->mCallback->addXdgTopLevel(appId, title, (long)toplevel, WlrBox_from_wlr_box(&toplevel->geo_box));
+          std::lock_guard<std::mutex> lock(thiz->mutex_);
+          thiz->toplevels.insert(toplevel);
+          thiz->mCallback->addXdgTopLevel(appId, title, (long)toplevel, WlrBox_from_wlr_box(&toplevel->geo_box));
         };
 
         server.callbacks.xdg_toplevel_remove = [](struct tinywl_toplevel *toplevel, void* data) {
-          // reinterpret_cast<TinywlMainService *>(data)->mCallback->removeXdgTopLevel(toplevel->xdg_toplevel->app_id, toplevel->xdg_toplevel->title, (long)toplevel);
+          auto thiz = reinterpret_cast<TinywlMainService *>(data);
+          std::lock_guard<std::mutex> lock(thiz->mutex_);
+          thiz->toplevels.erase(toplevel);
+          thiz->mCallback->removeXdgTopLevel(toplevel->xdg_toplevel->app_id, toplevel->xdg_toplevel->title, (long)toplevel);
         };
     }
 
@@ -98,6 +104,8 @@ namespace tinywl {
     struct tinywl_server server = {0};
 
   private:
+      std::mutex &mutex_ = mInputService->mutex_;
+      std::set<void *> &toplevels = mInputService->toplevels;
   };  // class TinywlMainService
 
 }  // namespace tinywl

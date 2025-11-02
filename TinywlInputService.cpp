@@ -153,18 +153,25 @@ namespace tinywl {
             continue;
           }
 
+          struct tinywl_toplevel* toplevel = reinterpret_cast<struct tinywl_toplevel*>(in_event->nativePtr);
+          
+          std::lock_guard<std::mutex> lock(thiz->mutex_);
+          if (thiz->toplevels.find(toplevel) == thiz->toplevels.end()) {
+            continue;
+          }
+
           switch (in_event->event.action) {
             case Action::BUTTON_PRESS:
             case Action::BUTTON_RELEASE:
-              thiz->sendPointerButtonEvent(in_event->event, reinterpret_cast<struct tinywl_toplevel*>(in_event->nativePtr));
+              thiz->sendPointerButtonEvent(in_event->event, toplevel);
               break;
             case Action::MOVE:
             case Action::HOVER_ENTER:
             case Action::HOVER_EXIT:
-              thiz->sendPointerPosition(in_event->event, reinterpret_cast<struct tinywl_toplevel*>(in_event->nativePtr));
+              thiz->sendPointerPosition(in_event->event, toplevel);
               break;
             case Action::SCROLL:
-              thiz->sendScrollEvent(in_event->event, reinterpret_cast<struct tinywl_toplevel*>(in_event->nativePtr));
+              thiz->sendScrollEvent(in_event->event, toplevel);
               break;
             default:
                 // Skip other actions
@@ -177,9 +184,16 @@ namespace tinywl {
           if (in_event->event.source != Source::KEYBOARD) {
             continue;
           }
+          
+          struct tinywl_toplevel* toplevel = reinterpret_cast<struct tinywl_toplevel*>(in_event->nativePtr);
+          
+          std::lock_guard<std::mutex> lock(thiz->mutex_);
+          if (thiz->toplevels.find(toplevel) == thiz->toplevels.end()) {
+            continue;
+          }
 
           struct wlr_keyboard_key_event wlr_event = {
-              .time_msec = static_cast<uint32_t>(get_current_time_msec()),
+              .time_msec = static_cast<uint32_t>(in_event->event.eventTime),
               .keycode = (uint32_t)in_event->event.scanCode,
               .update_state = true,
           };

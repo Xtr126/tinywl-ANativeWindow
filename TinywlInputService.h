@@ -2,6 +2,7 @@
 #include "aidl/android/hardware/input/common/MotionEvent.h"
 #include "aidl/com/android/server/inputflinger/KeyEvent.h"
 #include <memory>
+#include <set>
 #include <wayland-server-core.h>
 #ifdef __cplusplus
 
@@ -37,6 +38,9 @@ namespace tinywl {
       TinywlInputServiceQueue<KeyEvent> keyEventQueue;
       struct wl_listener event_loop_destroy;
       int event_fd;
+      mutable std::mutex mutex_;
+      std::set<void *> toplevels;
+
 
     private:
       struct tinywl_server* server;
