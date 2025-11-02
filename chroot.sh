@@ -47,23 +47,22 @@ if [ -z "$CHROOT_PATH" ] || [ -z "$TARGET_USER" ]; then
     usage
 fi
 
-# 1. Modify permissions for Wayland display socket (if it exists)
+# Modify permissions for Wayland display socket (if it exists)
 if [ -n "$WAYLAND_DISPLAY" ] && [ -e "$TMPDIR/$WAYLAND_DISPLAY" ]; then
     chmod 666 "$TMPDIR/$WAYLAND_DISPLAY"
 fi
 
-# 2. Create the temporary mount point inside the chroot
-# Use the named variable CHROOT_PATH
 su -c mkdir -p "$CHROOT_PATH/tmp/x-termux"
 
-# 3. Bind-mount termux TMPDIR to the chroot's mount point
+# Bind-mount termux TMPDIR to the chroot's mount point
 # This allows the chroot environment to access the wayland socket
 su -c mount --bind "$TMPDIR" "$CHROOT_PATH/tmp/x-termux"
 
-# 4. Set the XDG_RUNTIME_DIR environment variable for programs inside the chroot
+# Environment variables for programs inside the chroot
 export XDG_RUNTIME_DIR=/tmp/x-termux
+unset TMPDIR
 
 exec su -c chroot $CHROOT_PATH su $TARGET_USER
 
-# 5. Undo bind-mount in 3. 
+# Undo bind-mount 
 su -c umount "$CHROOT_PATH/tmp/x-termux"
