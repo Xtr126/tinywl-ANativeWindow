@@ -94,7 +94,10 @@ namespace tinywl {
           auto thiz = reinterpret_cast<TinywlMainService *>(data);
           std::lock_guard<std::mutex> lock(thiz->mutex_);
           thiz->toplevels.erase(toplevel);
-          thiz->mCallback->removeXdgTopLevel(toplevel->xdg_toplevel->app_id, toplevel->xdg_toplevel->title, (long)toplevel);
+          thiz->mCallback->removeXdgTopLevel(
+              toplevel->xdg_toplevel->app_id ? toplevel->xdg_toplevel->app_id : "",
+              toplevel->xdg_toplevel->title  ? toplevel->xdg_toplevel->title  : "",
+              (long)toplevel);          
         };
     }
 
